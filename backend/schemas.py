@@ -1,5 +1,5 @@
-from pydantic import BaseModel
-from typing import List, Optional
+from pydantic import BaseModel, model_validator
+from typing import List, Optional, Any
 from datetime import datetime
 
 # --- Pydantic Models for DB / Auth ---
@@ -56,8 +56,23 @@ class DomainListResponse(BaseModel):
 # --- Existing Models ---
 
 class FormInfo(BaseModel):
+    """Acceptă atât snake_case (has_password) cât și camelCase (hasPassword) de la extensia Chrome."""
     has_password: bool = False
     action: Optional[str] = ""
+    method: Optional[str] = "get"
+    input_types: Optional[List[str]] = []
+
+    @model_validator(mode="before")
+    @classmethod
+    def handle_camel_case(cls, values: Any) -> Any:
+        if isinstance(values, dict):
+            # hasPassword → has_password
+            if "hasPassword" in values and "has_password" not in values:
+                values["has_password"] = values["hasPassword"]
+            # inputTypes → input_types
+            if "inputTypes" in values and "input_types" not in values:
+                values["input_types"] = values["inputTypes"]
+        return values
 
 class AnalyzeRequest(BaseModel):
     url: str
