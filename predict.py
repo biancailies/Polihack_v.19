@@ -68,8 +68,8 @@ if __name__ == "__main__":
     ]
 
     print(f"{'URL':<45}  {'Phishing Probability':>20}  {'Verdict'}")
-    print("─" * 80)
+    print("-" * 80)
     for url in test_urls:
         prob = predict(url)
-        verdict = "🚨 Phishing" if prob >= 0.5 else "✅ Legitimate"
+        verdict = "Phishing" if prob >= 0.5 else "Legitimate"
         print(f"{url:<45}  {prob:>20.4f}  {verdict}")

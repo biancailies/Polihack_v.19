@@ -35,6 +35,7 @@ model = RandomForestClassifier(
     n_estimators=100,
     random_state=42,
     class_weight="balanced",
+    n_jobs=-1,
 )
 
 model.fit(X_train, y_train)
@@ -46,18 +47,18 @@ y_pred = model.predict(X_test)
 accuracy = accuracy_score(y_test, y_pred)
 print(f"Accuracy : {accuracy * 100:.2f}%\n")
 
-print("── Classification Report ────────────────────────────")
+print("--- Classification Report ---")
 print(classification_report(y_test, y_pred, target_names=["Legitimate", "Phishing"]))
 
 # ── 6. Feature importance (sorted descending) ────────────────────────────────
-print("── Feature Importance ───────────────────────────────")
+print("--- Feature Importance ---")
 importance_df = pd.DataFrame({
     "feature":   FEATURE_COLS,
     "importance": model.feature_importances_,
 }).sort_values("importance", ascending=False)
 
 for _, row in importance_df.iterrows():
-    bar = "█" * int(row["importance"] * 50)
+    bar = "=" * int(row["importance"] * 50)
     print(f"  {row['feature']:<28} {row['importance']:.4f}  {bar}")
 
 print()
@@ -70,7 +71,7 @@ with open(MODEL_PATH, "wb") as f:
 print(f"Model saved to '{MODEL_PATH}'")
 
 # ── 8. Reload the model and test a sample prediction ─────────────────────────
-print("\n── Sample Prediction ────────────────────────────────")
+print("\n--- Sample Prediction ---")
 
 with open(MODEL_PATH, "rb") as f:
     loaded_model = pickle.load(f)
@@ -95,7 +96,7 @@ test_samples = pd.DataFrame([
     },
 ])
 
-LABEL_MAP = {0: "Legitimate ✅", 1: "Phishing  🚨"}
+LABEL_MAP = {0: "Legitimate", 1: "Phishing"}
 
 predictions  = loaded_model.predict(test_samples)
 probabilities = loaded_model.predict_proba(test_samples)

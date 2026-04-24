@@ -1,7 +1,7 @@
 // PhishFox — popup.js (demo-ready)
 "use strict";
 
-const BACKEND       = "http://localhost:8000";
+const BACKEND       = "http://127.0.0.1:8000";
 const BLOCK_SCORE   = 80;
 const WARN_SCORE    = 40;
 const FETCH_TIMEOUT = 6000;

@@ -1,7 +1,7 @@
 // PhishFox — background.js
 // Intercepts navigations and blocks high-risk URLs before the page opens.
 
-const BACKEND      = "http://localhost:8000";
+const BACKEND      = "http://127.0.0.1:8000";
 const BLOCK_SCORE  = 80;          // risk_score threshold for hard block
 const FETCH_TIMEOUT_MS = 5000;    // abort backend call after 5 s
 

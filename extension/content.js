@@ -26,7 +26,7 @@
 
   // ── Constants ─────────────────────────────────────────────────────────────
 
-  const BACKEND          = "http://localhost:8000";
+  const BACKEND          = "http://127.0.0.1:8000";
   const OVERLAY_THRESHOLD = 70;   // show warning overlay at this score
   const TEXT_LIMIT        = 5000; // max characters of page text to send
   const OVERLAY_ID        = "__phishfox_overlay__";

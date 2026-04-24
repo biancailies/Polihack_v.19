@@ -4,6 +4,14 @@ import pandas as pd
 df = pd.read_csv("phishing_dataset.csv")
 print(f"Dataset loaded: {len(df)} rows\n")
 
+# Adjust for new dataset format
+df = df.rename(columns={"URL": "url", "Label": "label"})
+df["url"] = df["url"].astype(str)
+df["label"] = df["label"].map({"good": 0, "bad": 1})
+# Drop any rows where label mapping failed (just in case of nan)
+df = df.dropna(subset=["label"])
+df["label"] = df["label"].astype(int)
+
 # ── 2. Define suspicious keywords ────────────────────────────────────────────
 SUSPICIOUS_KEYWORDS = [
     "login", "verify", "secure", "update", "account",

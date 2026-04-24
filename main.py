@@ -38,6 +38,7 @@ class AnalysisResponse(BaseModel):
     ml_score: float
     rule_score: float
     final_score: float
+    risk_score: int
     verdict: str
     reasons: list[str]
 
@@ -101,6 +102,9 @@ def analyze(request: URLRequest):
     # 3. Combined final score (clamped to [0, 1])
     final_score = 0.7 * ml_score + 0.3 * rule_score
     final_score = max(0.0, min(1.0, final_score))
+    
+    # Calculate risk_score (0-100) for the extension compatibility
+    risk_score = int(final_score * 100)
 
     # 4. Verdict
     if final_score >= 0.7:
@@ -119,10 +123,16 @@ def analyze(request: URLRequest):
         ml_score=round(ml_score, 4),
         rule_score=round(rule_score, 4),
         final_score=round(final_score, 4),
+        risk_score=risk_score,
         verdict=verdict,
         reasons=reasons,
     )
 
+# ── POST /analyze-url ─────────────────────────────────────────────────────────
+# This endpoint is required by the extension's background.js and popup.js
+@app.post("/analyze-url", response_model=AnalysisResponse)
+def analyze_url(request: URLRequest):
+    return analyze(request)
 
 # ── GET / (health check) ──────────────────────────────────────────────────────
 @app.get("/")
