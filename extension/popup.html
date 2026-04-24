@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>PhishFox</title>
+  <style>
+    @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap");
+
+    :root {
+      --bg:       #0b0d13;
+      --surface:  #12151e;
+      --card:     #191d28;
+      --border:   rgba(255,255,255,0.07);
+      --t1:       #edf0f7;
+      --t2:       #7c859c;
+      --t3:       #3d4459;
+      --brand:    #ff6b35;
+      --safe:     #22c55e;
+      --warn:     #f59e0b;
+      --danger:   #ef4444;
+      --radius:   12px;
+      --ease:     cubic-bezier(.4,0,.2,1);
+    }
+
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html{-webkit-font-smoothing:antialiased}
+
+    body {
+      width: 360px;
+      font-family: "Inter", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--t1);
+      font-size: 13px;
+      line-height: 1.5;
+      overflow: hidden;
+    }
+
+    /* ── Header ── */
+    .header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 16px 12px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .fox-wrap {
+      position: relative;
+      width: 48px;
+      height: 48px;
+      flex-shrink: 0;
+    }
+
+    /* SVG ring around mascot */
+    .fox-ring {
+      position: absolute;
+      inset: -4px;
+      border-radius: 50%;
+      border: 2px solid var(--brand);
+      transition: border-color .4s var(--ease), box-shadow .4s var(--ease);
+    }
+
+    .fox-ring.safe    { border-color: var(--safe);   box-shadow: 0 0 14px rgba(34,197,94,.5); }
+    .fox-ring.warn    { border-color: var(--warn);   box-shadow: 0 0 14px rgba(245,158,11,.5); }
+    .fox-ring.danger  { border-color: var(--danger); box-shadow: 0 0 18px rgba(239,68,68,.6); animation: ring-pulse 1.2s ease-in-out infinite; }
+
+    @keyframes ring-pulse {
+      0%,100% { box-shadow: 0 0 14px rgba(239,68,68,.5); }
+      50%     { box-shadow: 0 0 28px rgba(239,68,68,.9); }
+    }
+
+    .fox-circle {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: rgba(255,107,53,.12);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 26px;
+      line-height: 1;
+      transition: background .4s var(--ease);
+    }
+
+    .fox-circle.safe   { background: rgba(34,197,94,.12);  animation: bounce-mascot 1.8s var(--ease) infinite; }
+    .fox-circle.warn   { background: rgba(245,158,11,.12); animation: pulse-mascot 1.5s ease-in-out infinite; }
+    .fox-circle.danger { background: rgba(239,68,68,.15);  animation: shake-mascot .55s var(--ease) infinite; }
+
+    @keyframes bounce-mascot {
+      0%,100%{ transform: translateY(0) scale(1); }
+      40%    { transform: translateY(-6px) scale(1.06); }
+      70%    { transform: translateY(-2px) scale(1.02); }
+    }
+    @keyframes pulse-mascot {
+      0%,100%{ transform: scale(1); }
+      50%    { transform: scale(1.08); }
+    }
+    @keyframes shake-mascot {
+      0%,100%{ transform: rotate(0); }
+      20%    { transform: rotate(-8deg); }
+      40%    { transform: rotate(7deg); }
+      60%    { transform: rotate(-5deg); }
+      80%    { transform: rotate(3deg); }
+    }
+
+    .header-info { flex: 1; min-width: 0; }
+
+    .brand {
+      font-size: 15px;
+      font-weight: 800;
+      letter-spacing: -.3px;
+      background: linear-gradient(135deg,#ff6b35,#ff9f5b);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .tab-url {
+      font-size: 10px;
+      color: var(--t3);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-top: 1px;
+    }
+
+    /* Status pill */
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 10px;
+      border-radius: 100px;
+      font-size: 11px;
+      font-weight: 700;
+      border: 1px solid;
+      transition: all .3s var(--ease);
+      flex-shrink: 0;
+    }
+
+    .pill-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    .pill.safe   { color:var(--safe);   border-color:var(--safe);   background:rgba(34,197,94,.1); }
+    .pill.warn   { color:var(--warn);   border-color:var(--warn);   background:rgba(245,158,11,.1); }
+    .pill.danger { color:var(--danger); border-color:var(--danger); background:rgba(239,68,68,.1); }
+    .pill.danger .pill-dot { animation: blink-dot .9s ease-in-out infinite; }
+    .pill.unknown{ color:var(--t3);     border-color:var(--t3);     background:transparent; }
+
+    @keyframes blink-dot {
+      0%,100%{ opacity:1; } 50%{ opacity:.3; }
+    }
+
+    /* ── Main ── */
+    .main {
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      min-height: 320px;
+    }
+
+    /* ── Empty state ── */
+    .empty {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      text-align: center;
+      padding: 28px 16px;
+      color: var(--t2);
+    }
+
+    .empty-fox { font-size: 44px; animation: float 3s ease-in-out infinite; }
+
+    @keyframes float {
+      0%,100%{ transform: translateY(0); }
+      50%    { transform: translateY(-8px); }
+    }
+
+    .empty p { font-size: 13px; line-height: 1.65; }
+
+    /* ── Score arc ── */
+    .score-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .arc-wrap {
+      position: relative;
+      width: 72px;
+      height: 72px;
+      flex-shrink: 0;
+    }
+
+    .arc-wrap svg { position: absolute; inset: 0; transform: rotate(-90deg); }
+
+    .arc-bg  { fill: none; stroke: rgba(255,255,255,.06); stroke-width: 6; }
+    .arc-fill{
+      fill: none;
+      stroke-width: 6;
+      stroke-linecap: round;
+      transition: stroke-dashoffset .9s var(--ease), stroke .4s;
+    }
+
+    .arc-label {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .arc-num  { font-size: 18px; font-weight: 900; line-height: 1; }
+    .arc-unit { font-size: 9px;  font-weight: 600; color: var(--t3); letter-spacing: .5px; }
+
+    .score-info { flex: 1; min-width: 0; }
+
+    .verdict-big {
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: -.3px;
+      line-height: 1.2;
+      margin-bottom: 4px;
+    }
+
+    .verdict-sub { font-size: 11px; color: var(--t2); }
+
+    /* ── Reasons card ── */
+    .reasons-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px 14px;
+    }
+
+    .card-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .7px;
+      text-transform: uppercase;
+      color: var(--t3);
+      margin-bottom: 8px;
+    }
+
+    .reasons-list { list-style: none; display: flex; flex-direction: column; gap: 5px; }
+
+    .reasons-list li {
+      font-size: 12px;
+      color: var(--t2);
+      padding: 5px 10px;
+      background: rgba(255,255,255,.03);
+      border-left: 2px solid var(--danger);
+      border-radius: 0 5px 5px 0;
+    }
+
+    /* ── URL card ── */
+    .url-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 10px 14px;
+    }
+
+    .url-val {
+      font-size: 11px;
+      font-family: "SF Mono","Fira Code",monospace;
+      color: var(--t2);
+      word-break: break-all;
+    }
+
+    /* ── Offline banner ── */
+    .offline {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 7px 11px;
+      background: rgba(245,158,11,.1);
+      border: 1px solid rgba(245,158,11,.35);
+      border-radius: 8px;
+      font-size: 11px;
+      font-weight: 500;
+      color: #f59e0b;
+    }
+
+    /* ── Meta row ── */
+    .meta-row { display: flex; justify-content: space-between; align-items: center; }
+    .source-tag { font-size: 10px; color: var(--t3); }
+    .ts         { font-size: 10px; color: var(--t3); }
+
+    /* ── Footer ── */
+    .footer {
+      padding: 10px;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn {
+      flex: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 9px 12px;
+      border: none;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform .15s var(--ease), box-shadow .15s var(--ease);
+    }
+
+    .btn:disabled { opacity: .4; cursor: not-allowed; }
+    .btn:active:not(:disabled) { transform: scale(.97); }
+
+    .btn-primary {
+      background: linear-gradient(135deg,#ff6b35,#e04a0a);
+      color: #fff;
+      box-shadow: 0 3px 12px rgba(255,107,53,.35);
+    }
+    .btn-primary:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 5px 18px rgba(255,107,53,.5); }
+
+    .btn-ghost {
+      background: var(--card);
+      color: var(--t2);
+      border: 1px solid var(--border);
+      flex: 0 0 38px;
+      padding: 9px;
+    }
+    .btn-ghost:hover:not(:disabled) { color: var(--t1); background: #1e2233; }
+
+    .spinner {
+      width:13px; height:13px;
+      border:2px solid rgba(255,255,255,.25);
+      border-top-color:#fff;
+      border-radius:50%;
+      animation: spin .7s linear infinite;
+      flex-shrink:0;
+    }
+
+    @keyframes spin{ to{ transform: rotate(360deg); } }
+
+    .hidden { display: none !important; }
+
+    /* Results area wrapper */
+    #resultsArea { display: flex; flex-direction: column; gap: 8px; }
+  </style>
+</head>
+<body>
+
+<!-- Header -->
+<header class="header">
+  <div class="fox-wrap">
+    <div class="fox-ring" id="foxRing"></div>
+    <div class="fox-circle" id="foxCircle">🦊</div>
+  </div>
+  <div class="header-info">
+    <div class="brand">PhishFox</div>
+    <div class="tab-url" id="tabUrl">Loading…</div>
+  </div>
+  <div class="pill unknown" id="statusPill">
+    <div class="pill-dot"></div>
+    <span id="statusLabel">Unknown</span>
+  </div>
+</header>
+
+<!-- Main -->
+<main class="main">
+
+  <!-- Offline banner -->
+  <div class="offline hidden" id="offlineBanner">🔌 Backend offline — showing last cached result</div>
+
+  <!-- Empty state -->
+  <div class="empty" id="emptyState">
+    <div class="empty-fox">🦊</div>
+    <p>PhishFox is watching.<br>Browse any site and results<br>will appear here automatically.</p>
+  </div>
+
+  <!-- Results -->
+  <div id="resultsArea" class="hidden">
+
+    <!-- Score arc + verdict -->
+    <div class="score-card">
+      <div class="arc-wrap">
+        <svg viewBox="0 0 72 72" width="72" height="72">
+          <circle class="arc-bg" cx="36" cy="36" r="30"/>
+          <circle class="arc-fill" id="arcFill" cx="36" cy="36" r="30"
+            stroke-dasharray="188.5" stroke-dashoffset="188.5" stroke="#ef4444"/>
+        </svg>
+        <div class="arc-label">
+          <span class="arc-num" id="arcNum">0</span>
+          <span class="arc-unit">/ 100</span>
+        </div>
+      </div>
+      <div class="score-info">
+        <div class="verdict-big" id="verdictBig">Unknown</div>
+        <div class="verdict-sub" id="verdictSub">No data yet</div>
+      </div>
+    </div>
+
+    <!-- Reasons -->
+    <div class="reasons-card hidden" id="reasonsCard">
+      <div class="card-label">⚠️ Signals detected</div>
+      <ul class="reasons-list" id="reasonsList"></ul>
+    </div>
+
+    <!-- Analysed URL -->
+    <div class="url-card hidden" id="urlCard">
+      <div class="card-label" style="margin-bottom:5px">Analysed URL</div>
+      <div class="url-val" id="urlVal">—</div>
+    </div>
+
+    <!-- Meta -->
+    <div class="meta-row">
+      <span class="source-tag" id="sourceTag"></span>
+      <span class="ts" id="tsLabel"></span>
+    </div>
+
+  </div>
+</main>
+
+<!-- Footer -->
+<footer class="footer">
+  <button class="btn btn-primary" id="analyzeBtn">🔍 Analyze current page</button>
+  <button class="btn btn-ghost" id="clearBtn" title="Clear result">🗑</button>
+</footer>
+
+<script src="popup.js"></script>
+</body>
+</html>

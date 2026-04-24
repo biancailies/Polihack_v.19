@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>⚠️ Blocked — PhishFox</title>
+  <style>
+    @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap");
+
+    :root {
+      --bg:     #09080d;
+      --card:   #110f18;
+      --border: rgba(239,68,68,.25);
+      --t1:     #f0eeff;
+      --t2:     #8b8fa8;
+      --t3:     #3d3f55;
+      --red:    #ef4444;
+      --red-lo: rgba(239,68,68,.12);
+      --amber:  #f59e0b;
+    }
+
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html{-webkit-font-smoothing:antialiased}
+
+    body {
+      font-family: "Inter",system-ui,sans-serif;
+      background: var(--bg);
+      color: var(--t1);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 16px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Dramatic radial glow */
+    body::before {
+      content:"";
+      position:fixed;
+      inset:0;
+      background: radial-gradient(ellipse 80% 50% at 50% -5%, rgba(200,20,20,.28) 0%, transparent 65%);
+      pointer-events:none;
+    }
+
+    /* Spinning threat rings */
+    .threat-ring {
+      position:fixed;
+      border-radius:50%;
+      border: 1px solid rgba(239,68,68,.08);
+      pointer-events:none;
+      animation: spin-ring linear infinite;
+    }
+    .tr1{ width:520px;height:520px;top:50%;left:50%;margin:-260px 0 0 -260px;animation-duration:30s; }
+    .tr2{ width:360px;height:360px;top:50%;left:50%;margin:-180px 0 0 -180px;animation-duration:20s;animation-direction:reverse; }
+    .tr3{ width:220px;height:220px;top:50%;left:50%;margin:-110px 0 0 -110px;animation-duration:14s; }
+
+    @keyframes spin-ring { to{ transform:rotate(360deg); } }
+
+    /* Card */
+    .card {
+      position:relative;
+      z-index:1;
+      max-width:540px;
+      width:100%;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 44px 40px 36px;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      gap:22px;
+      box-shadow:
+        0 0 0 1px rgba(239,68,68,.06),
+        0 40px 90px rgba(0,0,0,.7),
+        inset 0 1px 0 rgba(255,255,255,.04);
+      animation: card-in .5s cubic-bezier(.4,0,.2,1) both;
+    }
+
+    @keyframes card-in {
+      from{ opacity:0; transform:translateY(36px) scale(.97); }
+      to  { opacity:1; transform:translateY(0)    scale(1);   }
+    }
+
+    /* Mascot */
+    .fox-stage {
+      position:relative;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
+
+    .fox-outer {
+      width:100px;height:100px;border-radius:50%;
+      background:radial-gradient(circle, rgba(239,68,68,.2) 0%, rgba(180,20,20,.3) 100%);
+      border:2px solid rgba(239,68,68,.5);
+      display:flex;align-items:center;justify-content:center;
+      position:relative;z-index:2;
+    }
+
+    .fox-emoji {
+      font-size:52px;line-height:1;
+      display:block;
+      animation: fox-danger .6s cubic-bezier(.4,0,.2,1) .5s both, fox-shake-loop .55s ease-in-out 1.5s infinite;
+    }
+
+    @keyframes fox-danger {
+      0%  { transform:scale(.3) rotate(-15deg);opacity:0; }
+      70% { transform:scale(1.15) rotate(5deg);opacity:1; }
+      100%{ transform:scale(1) rotate(0);opacity:1; }
+    }
+
+    @keyframes fox-shake-loop {
+      0%,100%{ transform:rotate(0); }
+      20%    { transform:rotate(-7deg); }
+      40%    { transform:rotate(6deg); }
+      60%    { transform:rotate(-4deg); }
+      80%    { transform:rotate(3deg); }
+    }
+
+    .pulse1,.pulse2 {
+      position:absolute;border-radius:50%;
+      border:2px solid rgba(239,68,68,.35);
+      animation:pulse-out ease-out infinite;
+    }
+    .pulse1{ inset:-14px;animation-duration:1.8s; }
+    .pulse2{ inset:-28px;animation-duration:1.8s;animation-delay:.6s;border-color:rgba(239,68,68,.18); }
+
+    @keyframes pulse-out {
+      0%  { transform:scale(1);opacity:.9; }
+      100%{ transform:scale(1.4);opacity:0; }
+    }
+
+    /* Title */
+    .title-wrap{ text-align:center; }
+
+    .eyebrow {
+      font-size:11px;font-weight:700;letter-spacing:1.2px;
+      text-transform:uppercase;color:var(--t3);margin-bottom:8px;
+    }
+
+    .title {
+      font-size:32px;font-weight:900;letter-spacing:-.6px;line-height:1.1;
+      background:linear-gradient(135deg,#ff6b6b 0%,#ef4444 50%,#b91c1c 100%);
+      -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+    }
+
+    .subtitle { margin-top:8px;font-size:14px;color:var(--t2);line-height:1.6; }
+
+    /* Score pill */
+    .score-row {
+      display:flex;align-items:center;gap:10px;
+      padding:12px 20px;border-radius:100px;
+      background:var(--red-lo);border:1px solid rgba(239,68,68,.4);
+      width:100%;justify-content:center;
+    }
+
+    .score-lbl { font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--t3); }
+    .score-val { font-size:22px;font-weight:900;color:#ff7070;letter-spacing:-.5px; }
+    .verdict-chip {
+      font-size:12px;font-weight:700;color:#ff7070;
+      padding:3px 11px;background:rgba(239,68,68,.15);border-radius:100px;
+    }
+
+    /* URL box */
+    .url-box {
+      width:100%;background:rgba(0,0,0,.35);
+      border:1px solid rgba(255,255,255,.06);
+      border-radius:10px;padding:11px 14px;
+      display:flex;align-items:flex-start;gap:9px;
+    }
+
+    .url-icon{ font-size:15px;flex-shrink:0;margin-top:1px; }
+    .url-lbl{ font-size:10px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:var(--t3);margin-bottom:3px; }
+    .url-txt{ font-size:12px;font-family:"SF Mono","Fira Code",monospace;color:var(--t2);word-break:break-all;line-height:1.5;user-select:all; }
+
+    /* Reasons */
+    .reasons-box {
+      width:100%;background:rgba(255,255,255,.02);
+      border:1px solid rgba(255,255,255,.06);border-radius:12px;padding:14px;
+    }
+
+    .reasons-hd{ font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--t3);margin-bottom:10px; }
+
+    .reasons-list{ list-style:none;display:flex;flex-direction:column;gap:6px; }
+
+    .reasons-list li {
+      font-size:13px;color:var(--t2);
+      padding:7px 12px;
+      background:rgba(239,68,68,.07);
+      border-left:2px solid var(--red);
+      border-radius:0 6px 6px 0;
+      line-height:1.4;
+    }
+
+    /* Proceed warning */
+    .proceed-note {
+      width:100%;display:flex;align-items:flex-start;gap:9px;
+      background:rgba(245,158,11,.07);border:1px solid rgba(245,158,11,.25);
+      border-radius:8px;padding:10px 13px;
+      font-size:12px;color:#b8860b;line-height:1.5;
+    }
+
+    /* Actions */
+    .actions{ display:flex;flex-direction:column;gap:10px;width:100%; }
+
+    .btn {
+      display:inline-flex;align-items:center;justify-content:center;
+      gap:8px;width:100%;padding:14px 20px;
+      border:none;border-radius:10px;
+      font-family:inherit;font-size:14px;font-weight:700;
+      cursor:pointer;
+      transition:transform .15s,box-shadow .15s;
+      letter-spacing:.1px;
+    }
+
+    .btn:active{ transform:scale(.98); }
+
+    .btn-safe {
+      background:linear-gradient(135deg,#166534,#22c55e);
+      color:#fff;box-shadow:0 4px 18px rgba(34,197,94,.35);
+    }
+    .btn-safe:hover{ transform:translateY(-2px);box-shadow:0 7px 24px rgba(34,197,94,.5); }
+
+    .btn-row{ display:flex;gap:9px; }
+    .btn-row .btn{ flex:1; }
+
+    .btn-copy {
+      background:rgba(255,255,255,.04);color:var(--t2);
+      border:1px solid rgba(255,255,255,.08);font-size:13px;padding:12px;
+    }
+    .btn-copy:hover{ background:rgba(255,255,255,.08);color:var(--t1); }
+    .btn-copy.copied{ color:#22c55e;border-color:#22c55e;background:rgba(34,197,94,.08); }
+
+    .btn-danger {
+      background:transparent;color:#ff7070;
+      border:1px solid rgba(239,68,68,.45);font-size:13px;padding:12px;
+    }
+    .btn-danger:hover{ background:rgba(239,68,68,.1); }
+
+    /* Footer note */
+    .footer-note{ font-size:11px;color:var(--t3);text-align:center; }
+
+    .hidden{ display:none!important; }
+  </style>
+</head>
+<body>
+
+<!-- Spinning rings (purely decorative) -->
+<div class="threat-ring tr1"></div>
+<div class="threat-ring tr2"></div>
+<div class="threat-ring tr3"></div>
+
+<main class="card">
+
+  <!-- Mascot -->
+  <div class="fox-stage">
+    <div class="fox-outer">
+      <span class="fox-emoji">🦊</span>
+    </div>
+    <div class="pulse1"></div>
+    <div class="pulse2"></div>
+  </div>
+
+  <!-- Title -->
+  <div class="title-wrap">
+    <p class="eyebrow">🦊 PhishFox Protection</p>
+    <h1 class="title">Dangerous website<br>blocked</h1>
+    <p class="subtitle">PhishFox detected a phishing risk and prevented<br>this page from loading.</p>
+  </div>
+
+  <!-- Score -->
+  <div class="score-row">
+    <span class="score-lbl">Risk Score</span>
+    <span class="score-val" id="scoreVal">—/100</span>
+    <span class="verdict-chip" id="verdictChip">Phishing</span>
+  </div>
+
+  <!-- Blocked URL -->
+  <div class="url-box">
+    <span class="url-icon">🚫</span>
+    <div style="flex:1;min-width:0">
+      <div class="url-lbl">Blocked URL</div>
+      <div class="url-txt" id="urlTxt">Loading…</div>
+    </div>
+  </div>
+
+  <!-- Reasons -->
+  <div class="reasons-box hidden" id="reasonsBox">
+    <p class="reasons-hd">⚠️ Signals detected</p>
+    <ul class="reasons-list" id="reasonsList"></ul>
+  </div>
+
+  <!-- Proceed note -->
+  <div class="proceed-note hidden" id="proceedNote">
+    <span>⚠️</span>
+    <span>Proceeding may expose your credentials and personal data to attackers. Only continue if you are absolutely certain this site is safe.</span>
+  </div>
+
+  <!-- Actions -->
+  <div class="actions">
+    <button class="btn btn-safe" id="goBackBtn">✅ Go back to safety</button>
+    <div class="btn-row">
+      <button class="btn btn-copy" id="copyBtn">📋 Copy URL</button>
+      <button class="btn btn-danger" id="proceedBtn">⚠️ Open anyway</button>
+    </div>
+  </div>
+
+  <p class="footer-note">Protected by <strong>🦊 PhishFox</strong> · AI Anti-Phishing Assistant</p>
+
+</main>
+
+<script src="warning.js"></script>
+</body>
+</html>
