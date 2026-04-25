@@ -719,10 +719,12 @@
 
       /* Quick action chips */
       .catphis-quick-btns {
-        display: flex; flex-wrap: wrap; gap: 6px;
-        padding: 8px 14px 10px;
-        border-top: 1px solid rgba(139,92,246,.08);
-        background: rgba(15,10,35,.4);
+        display: flex; flex-wrap: wrap; gap: 8px;
+        padding: 10px 14px 12px;
+        border-top: 1px solid rgba(139,92,246,.1);
+        background: rgba(15,10,35,.5);
+        max-height: 120px;
+        overflow-y: auto;
       }
       .catphis-quick-btn {
         all: unset; cursor: pointer;
@@ -1220,29 +1222,33 @@
       input.focus();
     }
 
-    quickQuestions.forEach(q => {
+    function addQuickBtn(text, onClick, styleProps = {}) {
+      if (Array.from(quickBtnsArea.querySelectorAll('.catphis-quick-btn')).some(b => b.textContent === text)) return null;
       const btn = document.createElement("button");
       btn.className = "catphis-quick-btn";
-      btn.textContent = q;
-      btn.onclick = () => { 
+      if (styleProps.borderColor) btn.style.borderColor = styleProps.borderColor;
+      if (styleProps.color) btn.style.color = styleProps.color;
+      btn.textContent = text;
+      btn.onclick = onClick;
+      quickBtnsArea.appendChild(btn);
+      return btn;
+    }
+
+    quickQuestions.forEach(q => {
+      addQuickBtn(q, () => {
         if (q === "Scan this email") {
             if (window.__catphisForceScanEmail) window.__catphisForceScanEmail();
         } else {
             input.value = q; send(); 
         }
-      };
-      quickBtnsArea.appendChild(btn);
+      });
     });
 
-    // Report site chip
-    const reportBtn = document.createElement("button");
-    reportBtn.className = "catphis-quick-btn";
-    reportBtn.textContent = "🚩 Report site";
-    reportBtn.style.borderColor = "rgba(239,68,68,.3)";
-    reportBtn.style.color = "#fca5a5";
-    reportBtn.onclick = async () => {
-      reportBtn.disabled = true;
-      reportBtn.textContent = "Reporting...";
+    addQuickBtn("🚩 Report site", async () => {
+      const btn = Array.from(quickBtnsArea.querySelectorAll('.catphis-quick-btn')).find(b => b.textContent.includes("Report site"));
+      if (!btn) return;
+      btn.disabled = true;
+      btn.textContent = "Reporting...";
       try {
         await fetch(`${BACKEND}/report`, {
           method: "POST",
@@ -1253,9 +1259,8 @@
       } catch {
         showToast("⚠️ Could not report (backend offline)", "rgba(245,158,11,.9)");
       }
-      reportBtn.textContent = "🚩 Reported!";
-    };
-    quickBtnsArea.appendChild(reportBtn);
+      btn.textContent = "🚩 Reported!";
+    }, { borderColor: "rgba(239,68,68,.3)", color: "#fca5a5" });
 
     // Scam Message Detector
     const scamBtn = document.createElement("button");
@@ -1406,7 +1411,7 @@
     }
 
     async function checkShoppingSite() {
-        const btn = document.querySelector('[data-catphis-id="shop-btn"]') || shopBtn;
+        const btn = Array.from(document.querySelectorAll('.catphis-quick-btn')).find(b => b.textContent.includes("Check this shop"));
         if (btn) { btn.disabled = true; btn.textContent = "Scanning shop..."; }
 
         try {
@@ -1496,13 +1501,7 @@
 
         // Add extra chat questions specific to shopping
         ["Can I buy from here?", "Why is this shop risky?"].forEach(q => {
-            const btn = document.createElement("button");
-            btn.className = "catphis-quick-btn";
-            btn.textContent = q;
-            btn.style.borderColor = "rgba(167, 139, 250, .3)";
-            btn.style.color = "#a78bfa";
-            btn.onclick = () => { input.value = q; send(); };
-            quickBtnsArea.appendChild(btn);
+            addQuickBtn(q, () => { input.value = q; send(); }, { borderColor: "rgba(167, 139, 250, .3)", color: "#a78bfa" });
         });
 
         const chatMsg = `This shop looks **${result.verdict}** (Score: ${result.risk_score}/100).\n\nReasons: ${result.reasons.join(", ") || "None found."}\n\nAdvice: ${result.advice}`;
@@ -1532,15 +1531,9 @@
         }
     }
 
-    const shopBtn = document.createElement("button");
-    shopBtn.className = "catphis-quick-btn";
-    shopBtn.textContent = "🛒 Check this shop";
-    shopBtn.style.borderColor = "rgba(59,130,246,.3)";
-    shopBtn.style.color = "#60a5fa";
-    shopBtn.onclick = checkShoppingSite;
-    quickBtnsArea.appendChild(shopBtn);
+    addQuickBtn("🛒 Check this shop", checkShoppingSite, { borderColor: "rgba(59,130,246,.3)", color: "#60a5fa" });
 
-    if (isShoppingPage()) {
+    if (isShoppingPage() && !verdict) {
         setTimeout(checkShoppingSite, 1500);
     }
 
