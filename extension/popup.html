@@ -344,6 +344,14 @@
     }
     .btn-ghost:hover:not(:disabled) { color: var(--t1); background: #1e2233; }
 
+    .btn-dashboard {
+      background: linear-gradient(135deg, #4c1d95, #7c3aed);
+      color: #fff;
+      box-shadow: 0 3px 14px rgba(124,58,237,.35);
+      font-size: 12px;
+    }
+    .btn-dashboard:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 5px 20px rgba(124,58,237,.5); }
+
     .spinner {
       width:13px; height:13px;
       border:2px solid rgba(255,255,255,.25);
@@ -632,6 +640,11 @@
   <button class="btn btn-primary" id="analyzeBtn">🔍 Analyze current page</button>
   <button class="btn btn-ghost" id="clearBtn" title="Clear result">🗑</button>
 </footer>
+
+<!-- Family Dashboard button -->
+<div style="padding: 0 10px 8px; display:flex;">
+  <button class="btn btn-dashboard" id="dashboardBtn" style="flex:1;">🛡️ Open Family Safety Dashboard</button>
+</div>
 
 <!-- Elderly toggle -->
 <div class="elderly-toggle-row">

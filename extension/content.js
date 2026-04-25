@@ -31,7 +31,26 @@
     "western union", "moneygram", "bitcoin", "ethereum", "usdt"
   ];
 
-  // ── Elderly Protection Mode ──
+  // ── Family Safety Log Helper ──────────────────────────────────────────────
+  function saveFamilySafetyEvent(event) {
+    const entry = {
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
+      timestamp: new Date().toISOString(),
+      type: event.type || "website",
+      risk_score: event.risk_score || 0,
+      verdict: event.verdict || "",
+      title: event.title || document.title || "",
+      url: event.url || window.location.href,
+      reasons: event.reasons || [],
+      advice: event.advice || ""
+    };
+    chrome.storage.local.get("familySafetyLog", (data) => {
+      const log = data.familySafetyLog || [];
+      log.unshift(entry);
+      chrome.storage.local.set({ familySafetyLog: log.slice(0, 100) });
+    });
+  }
+
   let elderlyModeEnabled = false;
   chrome.storage.local.get("elderlyModeEnabled", (data) => {
     elderlyModeEnabled = !!data.elderlyModeEnabled;
@@ -173,6 +192,19 @@
   }
 
   async function analyzeWithBackend(payload) {
+    // Try via background proxy first (bypasses site CSP)
+    try {
+      const response = await new Promise((resolve) => {
+        chrome.runtime.sendMessage({ action: "fetch-analyze", payload: payload }, (res) => {
+          if (chrome.runtime.lastError) resolve(null);
+          else resolve(res);
+        });
+      });
+      if (response && response.data && !response.error) {
+        return response.data;
+      }
+    } catch {}
+    // Fallback: direct fetch (works on most sites without strict CSP)
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 8000);
     try {
@@ -1364,6 +1396,17 @@
     function handleShoppingResult(result) {
         chrome.storage.local.set({ lastShoppingAnalysis: result });
         
+        // Log to Family Safety Dashboard
+        saveFamilySafetyEvent({
+          type: "shopping",
+          risk_score: result.risk_score,
+          verdict: result.verdict,
+          title: document.title || window.location.hostname,
+          url: window.location.href,
+          reasons: result.reasons || [],
+          advice: result.advice || ""
+        });
+
         // Update glow
         glow.className = "catphis-glow";
         if (result.risk_score >= 85) glow.classList.add("danger");
@@ -2068,6 +2111,21 @@
     saveEmailToCache(fingerprint, result);
     updateEmailRiskUI(result);
     addEmailScanMessage(result, source, emailData);
+    
+    // Log to Family Safety Dashboard
+    saveFamilySafetyEvent({
+      type: "email",
+      risk_score: result.risk_score,
+      verdict: result.verdict,
+      title: emailData.subject ? `Email: ${emailData.subject.substring(0, 60)}` : "Email scan",
+      url: window.location.href,
+      reasons: result.reasons || [],
+      advice: result.risk_score >= 70
+        ? "Do not click links or reply to this email."
+        : result.risk_score >= 40
+        ? "Be cautious about clicking links in this email."
+        : "Email looks safe."
+    });
   }
 
   function scheduleEmailScan(reason) {
@@ -2190,11 +2248,25 @@
         const glow = document.querySelector('.catphis-glow');
         if (glow && (glow.classList.contains('danger') || glow.classList.contains('warn'))) {
             updateEmailRiskUI(result);
-            // Optionally clear the bubble if it was showing a scam warning
             const bubble = document.querySelector('.catphis-bubble');
             if (bubble) bubble.style.display = "none";
         }
     }
+
+    // Always log to Family Safety Dashboard
+    saveFamilySafetyEvent({
+      type: "message",
+      risk_score: result.risk_score,
+      verdict: result.verdict,
+      title: `Chat scan on ${window.location.hostname}`,
+      url: window.location.href,
+      reasons: result.reasons || [],
+      advice: result.risk_score >= 70
+        ? "Do not send money or click links. Verify the person through another channel."
+        : result.risk_score >= 40
+        ? "Verify the person's identity before acting on this message."
+        : "Messages look safe."
+    });
   }
 
   function scheduleChatScan() {
@@ -2275,7 +2347,23 @@
       const verdict = result?.verdict ?? (result ? "Safe" : "Backend Offline");
 
       if (!result) { saveResult(null, false); }
-      else { saveResult(result, true); }
+      else {
+        saveResult(result, true);
+        // Log to Family Safety Dashboard
+        saveFamilySafetyEvent({
+          type: "website",
+          risk_score: result.risk_score,
+          verdict: result.verdict,
+          title: document.title || window.location.hostname,
+          url: window.location.href,
+          reasons: result.reasons || [],
+          advice: result.risk_score >= 70
+            ? "Do not enter passwords or payment details on this page."
+            : result.risk_score >= 40
+            ? "Be cautious on this page."
+            : "Page looks safe."
+        });
+      }
 
       // Re-inject with glow + bubble
       const root = document.getElementById(ROOT_ID);

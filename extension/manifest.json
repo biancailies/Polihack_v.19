@@ -31,8 +31,8 @@
   "icons": {},
   "web_accessible_resources": [
     {
-      "resources": ["warning.html", "warning.js", "style.css", "content.js", "images/*"],
-      "matches": ["http://*/*", "https://*/*"]
+      "resources": ["warning.html", "warning.js", "style.css", "content.js", "images/*", "dashboard.html", "dashboard.js"],
+      "matches": ["http://*/*", "https://*/*", "<all_urls>"]
     }
   ]
 }

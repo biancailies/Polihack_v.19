@@ -214,6 +214,25 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true; // Keep message channel open for async response
   }
 
+  if (request.action === "fetch-analyze") {
+    fetch(`${BACKEND}/analyze`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(request.payload)
+    })
+    .then(res => {
+      if (!res.ok) {
+        res.text().then(text => sendResponse({ error: true, status: res.status, text: text }));
+      } else {
+        res.json().then(data => sendResponse({ error: false, data: data }));
+      }
+    })
+    .catch(err => {
+      sendResponse({ error: true, status: 0, text: err.message });
+    });
+    return true;
+  }
+
   if (request.action === "fetch-message") {
     fetch(`${BACKEND}/analyze-message`, {
       method: "POST",

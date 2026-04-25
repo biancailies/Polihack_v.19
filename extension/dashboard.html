@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CatPhish – Family Safety Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg:       #0b0d13;
+      --surface:  #12151e;
+      --card:     #191d28;
+      --border:   rgba(255,255,255,0.07);
+      --t1:       #edf0f7;
+      --t2:       #7c859c;
+      --t3:       #3d4459;
+      --brand:    #7c3aed;
+      --brand-lt: #a78bfa;
+      --safe:     #22c55e;
+      --warn:     #f59e0b;
+      --danger:   #ef4444;
+      --radius:   14px;
+      --ease:     cubic-bezier(.4,0,.2,1);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { -webkit-font-smoothing: antialiased; }
+    body {
+      font-family: "Inter", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--t1);
+      font-size: 14px;
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    /* ── Top nav ── */
+    .nav {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 20px;
+      font-weight: 900;
+      letter-spacing: -.5px;
+      background: linear-gradient(135deg, #a78bfa, #7c3aed);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .nav-cat { font-size: 28px; }
+    .nav-sub { font-size: 12px; color: var(--t3); font-weight: 500; letter-spacing: .3px; margin-top: 1px; -webkit-text-fill-color: var(--t3); }
+
+    .clear-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      border: 1px solid rgba(239,68,68,.35);
+      border-radius: 8px;
+      background: rgba(239,68,68,.08);
+      color: var(--danger);
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all .2s var(--ease);
+    }
+    .clear-btn:hover { background: rgba(239,68,68,.18); }
+
+    /* ── Page wrap ── */
+    .page { max-width: 900px; margin: 0 auto; padding: 24px 20px 48px; }
+
+    /* ── Summary cards ── */
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 12px;
+      margin-bottom: 28px;
+    }
+    .stat-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      transition: transform .2s var(--ease), box-shadow .2s;
+    }
+    .stat-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,.4); }
+    .stat-icon { font-size: 28px; margin-bottom: 4px; }
+    .stat-value {
+      font-size: 32px;
+      font-weight: 900;
+      line-height: 1;
+      letter-spacing: -1px;
+    }
+    .stat-label { font-size: 12px; color: var(--t2); font-weight: 500; margin-top: 2px; }
+    .stat-card.total  { border-color: rgba(124,58,237,.3); }
+    .stat-card.total .stat-value { color: var(--brand-lt); }
+    .stat-card.high   { border-color: rgba(239,68,68,.3); }
+    .stat-card.high .stat-value  { color: var(--danger); }
+    .stat-card.medium { border-color: rgba(245,158,11,.3); }
+    .stat-card.medium .stat-value{ color: var(--warn); }
+    .stat-card.safe   { border-color: rgba(34,197,94,.3); }
+    .stat-card.safe .stat-value  { color: var(--safe); }
+
+    /* ── Privacy notice ── */
+    .privacy-notice {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      background: rgba(34,197,94,.06);
+      border: 1px solid rgba(34,197,94,.2);
+      border-radius: 8px;
+      font-size: 12px;
+      color: var(--safe);
+      margin-bottom: 20px;
+    }
+
+    /* ── Filters ── */
+    .filters-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+    .filter-btn {
+      padding: 6px 14px;
+      border-radius: 100px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--t2);
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .2s var(--ease);
+    }
+    .filter-btn:hover { border-color: var(--brand-lt); color: var(--brand-lt); }
+    .filter-btn.active { background: rgba(124,58,237,.2); border-color: var(--brand-lt); color: var(--brand-lt); }
+
+    /* ── Section title ── */
+    .section-title {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: .6px;
+      text-transform: uppercase;
+      color: var(--t3);
+      margin-bottom: 12px;
+    }
+
+    /* ── Events list ── */
+    .events-list { display: flex; flex-direction: column; gap: 10px; }
+
+    .event-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px 18px;
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 14px;
+      align-items: start;
+      transition: transform .15s var(--ease);
+      animation: card-in .25s var(--ease) both;
+    }
+    @keyframes card-in {
+      from { opacity: 0; transform: translateY(6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .event-card:hover { transform: translateX(3px); }
+    .event-card.risk-high   { border-left: 4px solid var(--danger); }
+    .event-card.risk-medium { border-left: 4px solid var(--warn); }
+    .event-card.risk-low    { border-left: 4px solid var(--safe); }
+
+    .event-icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      flex-shrink: 0;
+    }
+    .event-icon.risk-high   { background: rgba(239,68,68,.12); }
+    .event-icon.risk-medium { background: rgba(245,158,11,.12); }
+    .event-icon.risk-low    { background: rgba(34,197,94,.12); }
+
+    .event-body { min-width: 0; }
+    .event-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--t1);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 3px;
+    }
+    .event-url {
+      font-size: 11px;
+      color: var(--t3);
+      font-family: "SF Mono","Fira Code", monospace;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 6px;
+    }
+    .event-reasons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+    }
+    .reason-tag {
+      padding: 2px 8px;
+      border-radius: 100px;
+      font-size: 10px;
+      font-weight: 600;
+      background: rgba(255,255,255,.05);
+      color: var(--t2);
+      border: 1px solid var(--border);
+    }
+
+    .event-meta { text-align: right; flex-shrink: 0; }
+    .event-score {
+      font-size: 22px;
+      font-weight: 900;
+      line-height: 1;
+      margin-bottom: 2px;
+    }
+    .event-score.risk-high   { color: var(--danger); }
+    .event-score.risk-medium { color: var(--warn); }
+    .event-score.risk-low    { color: var(--safe); }
+    .event-verdict {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .5px;
+      text-transform: uppercase;
+      color: var(--t3);
+      margin-bottom: 4px;
+    }
+    .event-time {
+      font-size: 10px;
+      color: var(--t3);
+    }
+    .event-advice {
+      margin-top: 8px;
+      padding: 8px 10px;
+      background: rgba(255,255,255,.03);
+      border-radius: 6px;
+      font-size: 11px;
+      color: var(--t2);
+      line-height: 1.5;
+      display: none;
+    }
+    .event-card:hover .event-advice { display: block; }
+
+    /* ── Empty state ── */
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--t2);
+    }
+    .empty-cat { font-size: 64px; margin-bottom: 16px; animation: float 3s ease-in-out infinite; }
+    @keyframes float {
+      0%,100% { transform: translateY(0); }
+      50%      { transform: translateY(-10px); }
+    }
+    .empty-title { font-size: 18px; font-weight: 800; color: var(--t1); margin-bottom: 8px; }
+    .empty-sub { font-size: 13px; color: var(--t2); }
+
+    /* ── Type badge ── */
+    .type-badge {
+      display: inline-block;
+      padding: 1px 7px;
+      border-radius: 100px;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: .4px;
+      text-transform: uppercase;
+      margin-bottom: 3px;
+    }
+    .type-website  { background: rgba(99,102,241,.2);  color: #818cf8; }
+    .type-email    { background: rgba(245,158,11,.2);  color: #fbbf24; }
+    .type-message  { background: rgba(236,72,153,.2);  color: #f472b6; }
+    .type-shopping { background: rgba(16,185,129,.2);  color: #34d399; }
+    .type-link     { background: rgba(239,68,68,.2);   color: #f87171; }
+  </style>
+</head>
+<body>
+
+<!-- Nav -->
+<nav class="nav">
+  <div>
+    <div class="nav-brand">
+      <span class="nav-cat">🐱</span>
+      <div>
+        CatPhish
+        <div class="nav-sub">Family Safety Dashboard</div>
+      </div>
+    </div>
+  </div>
+  <button class="clear-btn" id="clearHistoryBtn">🗑 Clear History</button>
+</nav>
+
+<div class="page">
+
+  <!-- Privacy notice -->
+  <div class="privacy-notice">
+    🔒 All data is stored only on this device. Nothing is ever sent to the cloud or shared with anyone.
+  </div>
+
+  <!-- Summary cards -->
+  <div class="summary-grid">
+    <div class="stat-card total">
+      <div class="stat-icon">🛡️</div>
+      <div class="stat-value" id="statTotal">0</div>
+      <div class="stat-label">Total threats logged</div>
+    </div>
+    <div class="stat-card high">
+      <div class="stat-icon">🚨</div>
+      <div class="stat-value" id="statHigh">0</div>
+      <div class="stat-label">High risk (70+)</div>
+    </div>
+    <div class="stat-card medium">
+      <div class="stat-icon">⚠️</div>
+      <div class="stat-value" id="statMedium">0</div>
+      <div class="stat-label">Suspicious (40–69)</div>
+    </div>
+    <div class="stat-card safe">
+      <div class="stat-icon">✅</div>
+      <div class="stat-value" id="statSafe">0</div>
+      <div class="stat-label">Safe (under 40)</div>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="filters-row">
+    <button class="filter-btn active" data-filter="all">🌐 All</button>
+    <button class="filter-btn" data-filter="website">🌍 Websites</button>
+    <button class="filter-btn" data-filter="email">📧 Emails</button>
+    <button class="filter-btn" data-filter="message">💬 Messages</button>
+    <button class="filter-btn" data-filter="shopping">🛒 Shopping</button>
+    <button class="filter-btn" data-filter="link">🔗 Links</button>
+  </div>
+
+  <!-- Event list -->
+  <div class="section-title" id="sectionTitle">Recent events</div>
+  <div class="events-list" id="eventsList">
+    <!-- injected by JS -->
+  </div>
+
+</div>
+
+<script src="dashboard.js"></script>
+</body>
+</html>

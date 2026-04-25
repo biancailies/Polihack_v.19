@@ -383,6 +383,15 @@ function clearResult() {
 analyzeBtn.addEventListener("click", analyzeCurrentPage);
 clearBtn.addEventListener("click", clearResult);
 
+// ── Family Safety Dashboard button ────────────────────────────────────────────
+const dashboardBtn = document.getElementById("dashboardBtn");
+if (dashboardBtn) {
+  dashboardBtn.addEventListener("click", () => {
+    chrome.tabs.create({ url: chrome.runtime.getURL("dashboard.html") });
+  });
+}
+
+
 // ── Elderly mode init ──────────────────────────────────────────────────────────
 function applyElderlyMode(enabled) {
   elderlyModeEnabled = enabled;
