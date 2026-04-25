@@ -726,24 +726,24 @@
 
   async function loadHistory() {
     return new Promise(res => {
-        chrome.storage.local.get("chatHistory", (data) => {
-            const h = data.chatHistory || {};
-            if (h.url === PAGE_URL && Array.isArray(h.messages)) {
-                conversationHistory = h.messages;
-            } else {
-                conversationHistory = [];
-            }
-            res();
-        });
+      chrome.storage.local.get("chatHistory", (data) => {
+        const h = data.chatHistory || {};
+        if (h.url === PAGE_URL && Array.isArray(h.messages)) {
+          conversationHistory = h.messages;
+        } else {
+          conversationHistory = [];
+        }
+        res();
+      });
     });
   }
 
   function saveHistory() {
     if (conversationHistory.length > 10) {
-        conversationHistory = conversationHistory.slice(-10);
+      conversationHistory = conversationHistory.slice(-10);
     }
     chrome.storage.local.set({
-        chatHistory: { url: PAGE_URL, messages: conversationHistory }
+      chatHistory: { url: PAGE_URL, messages: conversationHistory }
     });
   }
 
@@ -763,15 +763,15 @@
           forms: extractForms(),
         };
         const analyzeRes = await fetch(`${BACKEND}/analyze`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload)
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
         });
         if (analyzeRes.ok) {
-            analysisResult = await analyzeRes.json();
-            saveResult(analysisResult, true);
+          analysisResult = await analyzeRes.json();
+          saveResult(analysisResult, true);
         } else {
-            analysisResult = { risk_score: riskScore || 0, verdict: "Unknown", reasons: [] };
+          analysisResult = { risk_score: riskScore || 0, verdict: "Unknown", reasons: [] };
         }
       }
 
@@ -861,8 +861,8 @@
       return score >= 70
         ? "⛔ Leave this page immediately! Don't click anything or enter any info."
         : score >= 40
-        ? "⚠️ Be very careful. Avoid entering personal data. You can also report it below."
-        : "Looks okay! But always verify the URL and look for HTTPS 🔐";
+          ? "⚠️ Be very careful. Avoid entering personal data. You can also report it below."
+          : "Looks okay! But always verify the URL and look for HTTPS 🔐";
 
     if (m.includes("hello") || m.includes("hi") || m.includes("salut") || m.includes("hey"))
       return "Meow! 🐾 I'm CatPhish, your anti-phishing guardian. Ask me anything about this page!";
@@ -1229,11 +1229,10 @@
     function handleScamResult(result) {
         chrome.storage.local.set({ lastMessageAnalysis: result });
         
-        // Update glow
-        glow.className = "catphis-glow";
-        if (result.risk_score >= 70) glow.classList.add("danger");
-        else if (result.risk_score >= 40) glow.classList.add("warn");
-        else glow.classList.add("safe");
+        // Update visuals dynamically
+        if (window.__catphisUpdateVisuals) {
+            window.__catphisUpdateVisuals(result.risk_score);
+        }
 
         // Send a chat message
         const chatMsg = `I checked the message. Verdict: **${result.verdict}** (Score: ${result.risk_score}/100).\n\nAdvice: ${result.advice}`;
@@ -1258,25 +1257,34 @@
     const catWrap = document.createElement("div");
     catWrap.className = "catphis-cat-wrap catphis-anim-idle";
 
+    const isContextSpecific = window.location.hostname.includes("mail.google.com") || window.location.hostname.includes("web.whatsapp.com");
+    const visualRiskScore = isContextSpecific ? 0 : riskScore;
+
     const glow = document.createElement("div");
     glow.className = "catphis-glow";
-    if (riskScore != null) {
-      if (riskScore >= 70) glow.classList.add("danger");
-      else if (riskScore >= 40) glow.classList.add("warn");
+    if (visualRiskScore != null) {
+      if (visualRiskScore >= 70) glow.classList.add("danger");
+      else if (visualRiskScore >= 40) glow.classList.add("warn");
       else glow.classList.add("safe");
     }
 
     // Size constants — change here to resize everywhere
-    const IDLE_SIZE = "400px";
-    const DRAG_SIZE = "250px";
+    const IDLE_SIZE = "210px";
+    const DRAG_SIZE = "300px";
 
     // SVG container — try to use PNG images first, fall back to inline SVG
     const svgWrap = document.createElement("div");
     svgWrap.className = "catphis-cat-svg-wrap";
 
     // Try extension image first; onerror falls back to embedded SVG
-    const initImgUrl = (() => {
-      try { return chrome.runtime.getURL("images/cat_idle.png"); } catch { return null; }
+    let idleFilename = "cat_idle.png";
+    if (visualRiskScore != null) {
+      if (visualRiskScore >= 70) idleFilename = "cat_red.png";
+      else if (visualRiskScore >= 40) idleFilename = "cat_yellow.png";
+    }
+
+    let initImgUrl = (() => {
+      try { return chrome.runtime.getURL("images/" + idleFilename); } catch { return null; }
     })();
     const dragImgUrl = (() => {
       try { return chrome.runtime.getURL("images/cat_drag.png"); } catch { return null; }
@@ -1317,6 +1325,35 @@
         svgWrap.innerHTML = SVG_IDLE;
       }
     }
+
+    // Expose visual updater for context-specific scans (Gmail/WhatsApp)
+    window.__catphisUpdateVisuals = (score, isLoading = false) => {
+      glow.className = "catphis-glow";
+      if (isLoading) {
+        glow.classList.add("loading");
+      } else {
+        if (score >= 70) glow.classList.add("danger");
+        else if (score >= 40) glow.classList.add("warn");
+        else glow.classList.add("safe");
+      }
+
+      let newIdleFilename = "cat_idle.png";
+      if (!isLoading && score != null) {
+        if (score >= 70) newIdleFilename = "cat_red.png";
+        else if (score >= 40) newIdleFilename = "cat_yellow.png";
+      }
+
+      const newUrl = (() => {
+        try { return chrome.runtime.getURL("images/" + newIdleFilename); } catch { return null; }
+      })();
+
+      if (newUrl) {
+        initImgUrl = newUrl;
+        if (!isDragging && usingImage && imgEl) {
+          imgEl.src = initImgUrl;
+        }
+      }
+    };
     function setCatDrag() {
       if (usingImage && imgEl && dragImgUrl) {
         imgEl.src = dragImgUrl;
@@ -1406,11 +1443,23 @@
       isDragging = true;
       hasMoved = false;
       if (physicsReq) { cancelAnimationFrame(physicsReq); physicsReq = null; }
-      startX = e.clientX - translateX;
-      startY = e.clientY - translateY;
+
       catWrap.classList.remove("catphis-anim-idle");
       catWrap.style.width = svgWrap.style.width = DRAG_SIZE;
       setCatDrag();
+
+      // Align mouse to the "scruff" (middle-top) of the newly sized dragged cat
+      const rect = catWrap.getBoundingClientRect();
+      const grabX = rect.left + rect.width / 2;
+      const grabY = rect.top + 20; // 20px down from the very top
+
+      translateX += (e.clientX - grabX);
+      translateY += (e.clientY - grabY);
+
+      startX = e.clientX - translateX;
+      startY = e.clientY - translateY;
+
+      applyTransform();
       e.preventDefault();
     });
 
@@ -1701,15 +1750,8 @@
   }
 
   function updateEmailRiskUI(result, isLoading = false) {
-    const glow = document.querySelector('.catphis-glow');
-    if (!glow) return;
-    glow.className = "catphis-glow";
-    if (isLoading) {
-        glow.classList.add("loading");
-    } else {
-        if (result.risk_score >= 70) glow.classList.add("danger");
-        else if (result.risk_score >= 40) glow.classList.add("warn");
-        else glow.classList.add("safe");
+    if (window.__catphisUpdateVisuals) {
+        window.__catphisUpdateVisuals(result ? result.risk_score : 0, isLoading);
     }
   }
 
