@@ -24,9 +24,9 @@
   const STYLES_ID = "__catphis_styles__";
   const ROOT_ID = "catphis-root";
   const SENSITIVE_KEYWORDS = [
-    "password", "login", "sign in", "account", "otp", "2fa", "code", "pin", 
+    "password", "login", "sign in", "account", "otp", "2fa", "code", "pin",
     "card number", "cvv", "bank login", "verify your account", "credit card",
-    "billing", "bank account", "iban", "wire transfer", "crypto wallet", 
+    "billing", "bank account", "iban", "wire transfer", "crypto wallet",
     "gift card", "payment failed", "refund", "invoice", "customs fee", "delivery fee",
     "western union", "moneygram", "bitcoin", "ethereum", "usdt"
   ];
@@ -241,7 +241,7 @@
       if (response && response.data && !response.error) {
         return response.data;
       }
-    } catch {}
+    } catch { }
     // Fallback: direct fetch (works on most sites without strict CSP)
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 8000);
@@ -291,7 +291,7 @@
     const hasPasswordInput = document.querySelector('input[type="password"]') !== null;
     const hasPaymentInput = document.querySelector('input[name*="card"], input[id*="card"], input[name*="cvv"], input[id*="cvv"], input[name*="iban"], input[id*="iban"]') !== null;
     const foundKeywords = SENSITIVE_KEYWORDS.filter(k => text.includes(k));
-    
+
     return {
       hasPasswordInput,
       hasPaymentInput,
@@ -427,7 +427,7 @@
       document.head.appendChild(lnk);
     }
     style.textContent = `
-      #catphis-root * { box-sizing: border-box; margin: 0; padding: 0; }
+      #catphis-root * { box-sizing: border-box; margin: 0; padding: 10; }
       #catphis-root {
         all: initial;
         position: fixed;
@@ -490,28 +490,69 @@
         to   { opacity:1; transform: scale(1) translateY(0); }
       }
 
+      #catphis-root {
+        /* LIGHT MODE: ORANGE — fully opaque, high contrast */
+        --c-bg: #fff8f3;
+        --c-bg-solid: #ffffff;
+        --c-text: #1a0a00;
+        --c-border: rgba(234, 88, 12, 0.35);
+        --c-header-bg: linear-gradient(135deg, #ea580c, #9a3412);
+        --c-header-text: #ffffff;
+        --c-user-bg: linear-gradient(135deg, #f97316, #ea580c);
+        --c-user-text: #ffffff;
+        --c-bot-bg: #fef3e2;
+        --c-bot-text: #1a0a00;
+        --c-input-bg: #ffffff;
+        --c-input-border: rgba(234, 88, 12, 0.4);
+        --c-quick-bg: #fff3e8;
+        --c-quick-color: #9a3412;
+        --c-accent: #ea580c;
+        --c-chat-bg: #fff8f3;
+      }
+      @media (prefers-color-scheme: dark) {
+        #catphis-root {
+          /* DARK MODE: GREEN THEME */
+          --c-bg: rgba(10, 20, 15, 0.98);
+          --c-bg-solid: #064e3b;
+          --c-text: #ecfdf5;
+          --c-border: rgba(16, 185, 129, 0.3);
+          --c-header-bg: linear-gradient(135deg, #10b981, #059669);
+          --c-header-text: #ffffff;
+          --c-user-bg: linear-gradient(135deg, #10b981, #059669);
+          --c-user-text: #ffffff;
+          --c-bot-bg: rgba(16, 185, 129, 0.15);
+          --c-bot-text: #a7f3d0;
+          --c-input-bg: rgba(0, 0, 0, 0.5);
+          --c-input-border: rgba(16, 185, 129, 0.4);
+          --c-quick-bg: rgba(16, 185, 129, 0.15);
+          --c-quick-color: #6ee7b7;
+          --c-accent: #10b981;
+        }
+      }
+
       .catphis-bubble {
         pointer-events: all;
         position: absolute;
         bottom: calc(100% + 12px);
         right: 0;
-        background: rgba(15, 10, 30, 0.92);
+        background: var(--c-bg);
         backdrop-filter: blur(12px);
         -webkit-backdrop-filter: blur(12px);
-        border: 1px solid rgba(167,139,250,.4);
+        border: 1px solid var(--c-border);
         border-radius: 16px 16px 4px 16px;
         padding: 10px 15px;
         max-width: 240px;
         font-size: 13px;
-        color: #e9d5ff;
+        color: var(--c-text);
         line-height: 1.5;
-        box-shadow: 0 8px 32px rgba(0,0,0,.6), 0 0 0 1px rgba(167,139,250,.08);
+        box-shadow: 0 8px 32px rgba(0,0,0,.15);
         white-space: normal;
+        font-family: 'Inter', sans-serif;
       }
       .catphis-bubble::after {
         content: ""; position: absolute; bottom: -9px; right: 18px;
         border: 5px solid transparent;
-        border-top-color: rgba(167,139,250,.4);
+        border-top-color: var(--c-border);
       }
 
       .catphis-chat {
@@ -519,21 +560,20 @@
         position: absolute;
         bottom: calc(100% + 14px);
         right: 0;
-        width: 340px;
-        background: rgba(10, 7, 22, 0.96);
-        backdrop-filter: blur(20px);
-        -webkit-backdrop-filter: blur(20px);
-        border: 1px solid rgba(139,92,246,.25);
+        width: 380px;
+        background: var(--c-bg);
+        border: 1.5px solid var(--c-border);
         border-radius: 20px;
-        box-shadow:
-          0 24px 60px rgba(0,0,0,.85),
-          0 0 0 1px rgba(139,92,246,.1),
-          inset 0 1px 0 rgba(255,255,255,.06);
+        box-shadow: 0 16px 48px rgba(0,0,0,.18), 0 2px 8px rgba(234,88,12,.08);
         overflow: hidden;
         display: none;
         flex-direction: column;
-        max-height: 500px;
+        height: 480px;
+        max-height: calc(100vh - 100px);
+        z-index: 2147483647;
         transform-origin: bottom right;
+        color: var(--c-text);
+        font-family: 'Inter', sans-serif;
       }
       .catphis-chat.open {
         display: flex;
@@ -545,39 +585,29 @@
       }
 
       .catphis-chat-header {
-        padding: 14px 16px 12px;
+        padding: 16px 18px 14px;
         display: flex;
         align-items: center;
         gap: 10px;
-        background: linear-gradient(135deg, rgba(76,29,149,.9), rgba(109,40,217,.8));
-        border-bottom: 1px solid rgba(139,92,246,.2);
-        position: relative;
-        overflow: hidden;
-      }
-      .catphis-chat-header::before {
-        content: "";
-        position: absolute;
-        inset: 0;
-        background: linear-gradient(135deg, transparent 40%, rgba(167,139,250,.08));
-        pointer-events: none;
+        background: var(--c-header-bg);
+        color: var(--c-header-text);
       }
       .catphis-chat-avatar {
-        width: 36px; height: 36px;
+        width: 38px; height: 38px;
         border-radius: 50%;
-        background: linear-gradient(135deg, #1e1b2e, #2d1b69);
-        border: 2px solid rgba(167,139,250,.4);
+        background: var(--c-bg-solid);
+        border: 2px solid var(--c-accent);
         display: flex; align-items: center; justify-content: center;
         font-size: 18px;
         flex-shrink: 0;
-        box-shadow: 0 0 12px rgba(139,92,246,.4);
       }
       .catphis-chat-header-info { flex: 1; }
       .catphis-chat-header-title {
-        font-size: 14px; font-weight: 700; color: #fff;
+        font-size: 15px; font-weight: 700;
         letter-spacing: -.2px; line-height: 1.2;
       }
       .catphis-chat-header-sub {
-        font-size: 11px; color: rgba(167,139,250,.7); margin-top: 1px;
+        font-size: 12px; opacity: 0.9; margin-top: 2px;
         display: flex; align-items: center; gap: 5px;
       }
       .catphis-status-dot {
@@ -590,47 +620,47 @@
       }
       .catphis-chat-header-close {
         all: unset; cursor: pointer;
-        width: 28px; height: 28px;
+        width: 30px; height: 30px;
         border-radius: 8px;
         display: flex; align-items: center; justify-content: center;
-        font-size: 14px; color: rgba(255,255,255,.5);
-        transition: color .15s, background .15s;
+        font-size: 15px; color: inherit; opacity: 0.7;
+        transition: opacity .15s, background .15s;
         flex-shrink: 0;
       }
-      .catphis-chat-header-close:hover { color:#fff; background:rgba(255,255,255,.12); }
+      .catphis-chat-header-close:hover { opacity: 1; background: rgba(255,255,255,.15); }
 
       .catphis-chat-messages {
         flex: 1;
-        overflow-y: auto;
-        padding: 14px 14px 8px;
+        overflow-y: scroll;
+        padding: 8px 16px;
         display: flex;
         flex-direction: column;
-        gap: 10px;
-        min-height: 200px;
-        max-height: 280px;
-        scrollbar-width: thin;
-        scrollbar-color: rgba(139,92,246,.25) transparent;
+        gap: 12px;
+        min-height: 250px;
+        scrollbar-width: auto;
+        scrollbar-color: var(--c-border) transparent;
       }
-      .catphis-chat-messages::-webkit-scrollbar { width: 6px; }
-      .catphis-chat-messages::-webkit-scrollbar-track { background: transparent; }
-      .catphis-chat-messages::-webkit-scrollbar-thumb { background: rgba(139,92,246,.4); border-radius: 3px; }
+      .catphis-chat-messages::-webkit-scrollbar { width: 8px; }
+      .catphis-chat-messages::-webkit-scrollbar-track { background: rgba(0,0,0,.05); border-radius: 4px; margin: 4px; }
+      .catphis-chat-messages::-webkit-scrollbar-thumb { background: var(--c-border); border-radius: 4px; }
 
-      .catphis-msg-row { display: flex; align-items: flex-end; gap: 7px; }
+      .catphis-msg-row { display: flex; align-items: flex-end; gap: 8px; }
+      .catphis-msg-row:first-child { margin-top: 24px; }
       .catphis-msg-row.user { flex-direction: row-reverse; }
       .catphis-msg-icon {
-        width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0;
-        background: linear-gradient(135deg, #1e1b2e, #2d1b69);
-        border: 1px solid rgba(139,92,246,.3);
+        width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0;
+        background: var(--c-bg-solid);
+        border: 1px solid var(--c-border);
         display: flex; align-items: center; justify-content: center;
-        font-size: 13px;
+        font-size: 14px;
       }
       
       .catphis-msg {
-        max-width: 78%;
+        max-width: 80%;
         padding: 10px 14px;
         border-radius: 16px;
-        font-size: 13px;
-        line-height: 1.55;
+        font-size: 13.5px;
+        line-height: 1.5;
         animation: catphis-msg-in .22s cubic-bezier(.34,1.56,.64,1) both;
       }
       @keyframes catphis-msg-in {
@@ -639,28 +669,28 @@
       }
       .catphis-msg.bot {
         align-self: flex-start;
-        background: rgba(30, 20, 60, 0.8);
-        border: 1px solid rgba(139,92,246,.2);
-        color: #e9d5ff;
+        background: var(--c-bot-bg);
+        border: 1px solid var(--c-border);
+        color: var(--c-bot-text);
         border-radius: 4px 16px 16px 16px;
       }
       .catphis-msg.user {
         align-self: flex-end;
-        background: linear-gradient(135deg, #5b21b6, #7c3aed);
-        color: #fff;
+        background: var(--c-user-bg);
+        color: var(--c-user-text);
         border-radius: 16px 4px 16px 16px;
-        box-shadow: 0 4px 12px rgba(124,58,237,.35);
+        box-shadow: 0 4px 12px rgba(0,0,0,.1);
       }
       .catphis-msg.typing {
         align-self: flex-start;
-        background: rgba(30,20,60,.6);
-        border: 1px solid rgba(139,92,246,.15);
+        background: var(--c-bot-bg);
+        border: 1px solid var(--c-border);
         border-radius: 4px 16px 16px 16px;
         padding: 12px 16px;
         display: flex; align-items: center; gap: 4px;
       }
       .catphis-dot {
-        width: 6px; height: 6px; border-radius: 50%; background: #a78bfa;
+        width: 6px; height: 6px; border-radius: 50%; background: var(--c-accent);
         animation: catphis-dots 1.2s ease-in-out infinite;
       }
       .catphis-dot:nth-child(2) { animation-delay: .2s; }
@@ -671,115 +701,101 @@
       }
 
       .catphis-divider {
-        text-align: center; font-size: 10px; color: rgba(139,92,246,.4);
+        text-align: center; font-size: 10px; color: var(--c-border);
         letter-spacing: .5px; text-transform: uppercase; margin: 2px 0;
       }
 
       .catphis-chat-input-area {
         display: flex;
         gap: 8px;
-        padding: 12px 14px;
-        border-top: 1px solid rgba(139,92,246,.12);
-        background: rgba(15,10,35,.6);
+        padding: 12px 16px;
+        border-top: 1px solid var(--c-border);
+        background: transparent;
         align-items: center;
       }
       .catphis-chat-input {
         all: unset;
         flex: 1;
-        background: rgba(139,92,246,.08);
-        border: 1px solid rgba(139,92,246,.2);
+        background: var(--c-input-bg);
+        border: 1px solid var(--c-input-border);
         border-radius: 12px;
         padding: 10px 14px;
-        color: #e9d5ff;
-        font-size: 13px;
-        line-height: 1.4;
-        transition: border-color .2s, background .2s;
+        color: var(--c-text);
+        font-size: 13.5px;
+        transition: border-color .2s;
       }
-      .catphis-chat-input::placeholder { color: rgba(167,139,250,.35); }
+      .catphis-chat-input::placeholder { opacity: 0.6; color: inherit; }
       .catphis-chat-input:focus {
-        border-color: rgba(139,92,246,.55);
-        background: rgba(139,92,246,.12);
+        border-color: var(--c-accent);
       }
       .catphis-send-btn {
         all: unset;
         cursor: pointer;
         width: 38px; height: 38px;
         border-radius: 12px;
-        background: linear-gradient(135deg, #5b21b6, #7c3aed);
+        background: var(--c-user-bg);
+        color: var(--c-user-text);
         display: flex; align-items: center; justify-content: center;
         font-size: 16px;
         flex-shrink: 0;
-        transition: opacity .15s, transform .15s, box-shadow .2s;
-        box-shadow: 0 4px 12px rgba(124,58,237,.4);
+        transition: opacity .15s, transform .15s;
       }
-      .catphis-send-btn:hover  { opacity: .9; box-shadow: 0 6px 16px rgba(124,58,237,.55); }
-      .catphis-send-btn:active { transform: scale(.88); }
-      .catphis-send-btn:disabled { opacity: .35; cursor: not-allowed; transform: none; }
-      .catphis-chat-input:disabled { opacity: .45; cursor: not-allowed; }
+      .catphis-send-btn:hover  { opacity: .9; }
+      .catphis-send-btn:active { transform: scale(.9); }
+      .catphis-send-btn:disabled { opacity: .4; cursor: not-allowed; }
+      .catphis-chat-input:disabled { opacity: .5; cursor: not-allowed; }
 
       /* Quick action chips */
       .catphis-quick-btns {
         display: flex; flex-wrap: wrap; gap: 8px;
-        padding: 10px 14px 12px;
-        border-top: 1px solid rgba(139,92,246,.1);
-        background: rgba(15,10,35,.5);
+        padding: 10px 16px 14px;
+        border-top: 1px solid var(--c-border);
         max-height: 120px;
         overflow-y: auto;
       }
       .catphis-quick-btn {
         all: unset; cursor: pointer;
-        background: rgba(139,92,246,.1);
-        border: 1px solid rgba(139,92,246,.22);
+        background: var(--c-quick-bg);
+        border: 1px solid var(--c-border);
         border-radius: 20px;
-        padding: 5px 11px;
-        font-size: 11.5px;
-        color: #c4b5fd;
+        padding: 6px 12px;
+        font-size: 12px;
+        color: var(--c-quick-color);
         transition: background .15s, border-color .15s, transform .12s;
         white-space: nowrap;
         font-family: 'Inter', sans-serif;
       }
       .catphis-quick-btn:hover {
-        background: rgba(139,92,246,.22);
-        border-color: rgba(139,92,246,.45);
+        background: var(--c-border);
         transform: translateY(-1px);
       }
       .catphis-quick-btn:active { transform: scale(.95); }
 
-      /* Risk score card */
-      .catphis-risk-card {
-        border-radius: 12px;
-        padding: 12px 14px;
-        margin-bottom: 2px;
-        font-size: 12px;
-        line-height: 1.5;
-        border: 1px solid;
-        animation: catphis-msg-in .3s ease both;
-      }
-      .catphis-risk-card.safe   { background: rgba(16,185,129,.1); border-color: rgba(16,185,129,.3); color: #6ee7b7; }
-      .catphis-risk-card.warn   { background: rgba(245,158,11,.1); border-color: rgba(245,158,11,.3); color: #fcd34d; }
-      .catphis-risk-card.danger { background: rgba(239,68,68,.1);  border-color: rgba(239,68,68,.3);  color: #fca5a5; }
-      .catphis-risk-card-title { font-weight: 700; font-size: 13px; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
-      .catphis-risk-bar-bg {
-        height: 5px; border-radius: 3px; background: rgba(255,255,255,.1); overflow: hidden; margin-bottom: 7px;
-      }
-      .catphis-risk-bar-fill { height: 100%; border-radius: 3px; transition: width 1s cubic-bezier(.4,0,.2,1); }
-      .catphis-risk-bar-fill.safe   { background: linear-gradient(90deg,#10b981,#34d399); }
-      .catphis-risk-bar-fill.warn   { background: linear-gradient(90deg,#f59e0b,#fbbf24); }
-      .catphis-risk-bar-fill.danger { background: linear-gradient(90deg,#ef4444,#f87171); }
-      .catphis-risk-reason { font-size: 11px; opacity: .8; padding-left: 2px; }
+      /* Risk score card (Left for backward compat if somehow used) */
+      .catphis-risk-card { display: none; }
+      .catphis-risk-card.safe   { display: none; }
+      .catphis-risk-card.warn   { display: none; }
+      .catphis-risk-card.danger { display: none; }
+      .catphis-risk-card-title { display: none; }
+      .catphis-risk-bar-bg { display: none; }
+      .catphis-risk-bar-fill { display: none; }
+      .catphis-risk-bar-fill.safe   { display: none; }
+      .catphis-risk-bar-fill.warn   { display: none; }
+      .catphis-risk-bar-fill.danger { display: none; }
+      .catphis-risk-reason { display: none; }
       .catphis-risk-reason::before { content: '• '; }
-
+      
       /* Toast */
       .catphis-toast {
-        position: absolute;
+        position: fixed;
         bottom: 70px; left: 50%; transform: translateX(-50%);
-        background: rgba(16,185,129,.92);
-        color: #fff; font-size: 12px; font-weight: 600;
-        padding: 7px 16px; border-radius: 20px;
+        background: var(--c-accent);
+        color: #fff; font-size: 13px; font-weight: 600;
+        padding: 8px 18px; border-radius: 20px;
         white-space: nowrap;
-        box-shadow: 0 4px 16px rgba(0,0,0,.4);
+        box-shadow: 0 4px 16px rgba(0,0,0,.3);
         animation: catphis-toast-in .3s ease both;
-        pointer-events: none; z-index: 10;
+        pointer-events: none; z-index: 2147483647;
       }
       @keyframes catphis-toast-in {
         from { opacity:0; transform: translateX(-50%) translateY(8px); }
@@ -800,24 +816,25 @@
 
       /* Chat Themes */
       .catphis-theme-light { 
-        background: rgba(255, 255, 255, 0.98) !important; 
-        border-color: rgba(0, 0, 0, 0.15) !important;
-        box-shadow: 0 10px 40px rgba(0,0,0,0.1), 0 0 0 1px rgba(0,0,0,0.05) !important;
+        background: #fff8f3 !important; 
+        border-color: rgba(234, 88, 12, 0.35) !important;
+        box-shadow: 0 16px 48px rgba(0,0,0,.18), 0 2px 8px rgba(234,88,12,.08) !important;
       }
-      .catphis-theme-light .catphis-chat-header { background: #f8fafc !important; border-bottom: 1px solid #e2e8f0 !important; }
-      .catphis-theme-light .catphis-header-title { color: #0f172a !important; }
-      .catphis-theme-light .catphis-msg.bot { background: #f1f5f9 !important; color: #1e293b !important; border-color: #cbd5e1 !important; }
-      .catphis-theme-light .catphis-msg.user { background: #6d28d9 !important; color: #ffffff !important; }
-      .catphis-theme-light .catphis-input-area { background: #f8fafc !important; border-top: 1px solid #e2e8f0 !important; }
-      .catphis-theme-light #catphis-input { background: #ffffff !important; border: 1px solid #94a3b8 !important; color: #0f172a !important; }
+      .catphis-theme-light .catphis-chat-header { background: linear-gradient(135deg, #ea580c, #9a3412) !important; border-bottom: none !important; }
+      .catphis-theme-light .catphis-chat-header-title { color: #ffffff !important; }
+      .catphis-theme-light .catphis-chat-header-sub { color: rgba(255,255,255,.9) !important; }
+      .catphis-theme-light .catphis-msg.bot { background: #fef3e2 !important; color: #1a0a00 !important; border-color: rgba(234, 88, 12, 0.3) !important; }
+      .catphis-theme-light .catphis-msg.user { background: linear-gradient(135deg, #f97316, #ea580c) !important; color: #ffffff !important; }
+      .catphis-theme-light .catphis-chat-input-area { background: transparent !important; border-top: 1px solid rgba(234, 88, 12, 0.4) !important; }
+      .catphis-theme-light .catphis-chat-input { background: #ffffff !important; border: 1px solid rgba(234, 88, 12, 0.4) !important; color: #1a0a00 !important; }
       .catphis-theme-light .catphis-quick-btn { 
-        background: #f1f5f9 !important; 
-        border: 1px solid #cbd5e1 !important; 
-        color: #334155 !important; 
+        background: #fff3e8 !important; 
+        border: 1px solid rgba(234, 88, 12, 0.35) !important; 
+        color: #9a3412 !important; 
         font-weight: 600 !important;
       }
-      .catphis-theme-light .catphis-quick-btn:hover { background: #e2e8f0 !important; }
-      .catphis-theme-light .catphis-chat-msg-area { color: #334155 !important; }
+      .catphis-theme-light .catphis-quick-btn:hover { background: rgba(234, 88, 12, 0.15) !important; }
+      .catphis-theme-light .catphis-chat-messages { color: #1a0a00 !important; }
 
       /* Font Families */
       .catphis-font-inter .catphis-chat-msg-area, .catphis-font-inter #catphis-input { font-family: 'Inter', sans-serif !important; }
@@ -956,44 +973,28 @@
         : "Still analyzing this page... ask me again in a moment!";
 
     if (m.includes("password") || m.includes("parola") || m.includes("login") || m.includes("credentials") || m.includes("otp") || m.includes("code")) {
-      let advice = "";
-      if (score >= 70) {
-        advice = "🚨 **STOP! Do NOT enter your password here.** This page is extremely dangerous and is likely trying to steal your credentials.";
-      } else if (score >= 40) {
-        advice = "⚠️ **Warning: I don't recommend entering your password here.** This page has suspicious signals. If you must login, go to the official website directly by typing the URL yourself.";
-      } else {
-        advice = "✅ This login page looks low-risk, but always double-check the domain name in the address bar before entering your password.";
-      }
-      
-      const miniAdvice = "\n\n💡 **Safety Tips:**\n• Use a password manager to store and fill your logins.\n• Never share OTP or 2FA codes with anyone.\n• If a link feels 'urgent', it's usually a scam.\n• Check that the website address is spelled correctly.";
-      return advice + miniAdvice;
+      if (score >= 70) return "🚨 STOP! Do NOT enter your password here. This page is extremely dangerous.";
+      if (score >= 40) return "⚠️ Careful. I don't recommend logging in here. Better type the URL yourself.";
+      return "✅ Looks safe, but always double-check the URL before typing your password.";
     }
 
     if (m.includes("report") || m.includes("flag"))
-      return "Use the '🚩 Report Site' button below to report this page to our team!";
+      return "Use the '🚩 Report Site' button below to flag this page.";
 
     if (m.includes("what should i do") || m.includes("help") || m.includes("ajutor"))
       return score >= 70
-        ? "⛔ Leave this page immediately! Don't click anything or enter any info."
+        ? "⛔ Leave this page immediately!"
         : score >= 40
-          ? "⚠️ Be very careful. Avoid entering personal data. You can also report it below."
-          : "Looks okay! But always verify the URL and look for HTTPS 🔐";
+          ? "⚠️ Be careful. Don't enter personal data."
+          : "Looks okay! Just verify the URL 🔐";
 
     if (m.includes("hello") || m.includes("hi") || m.includes("salut") || m.includes("hey"))
-      return "Meow! 🐾 I'm CatPhish, your anti-phishing guardian. Ask me anything about this page!";
+      return "Meow! 🐾 I'm CatPhish. Ask me if this page is safe!";
 
     if (m.includes("payment") || m.includes("bank") || m.includes("card") || m.includes("money") || m.includes("crypto") || m.includes("pay")) {
-      let advice = "";
-      if (score >= 70) {
-        advice = "🚨 **STOP! Do NOT enter payment or bank details here.** This page is extremely risky and shows clear signs of financial fraud.";
-      } else if (score >= 40) {
-        advice = "⚠️ **Be very careful.** This page is asking for payment information but has suspicious signals. Scammers often use 'customs fees' or 'unpaid delivery' tricks.";
-      } else {
-        advice = "✅ This payment page looks low-risk, but always check the domain name and ensure the site uses a secure connection (HTTPS) before paying.";
-      }
-      
-      const financialAdvice = "\n\n💡 **Financial Safety Tips:**\n• Avoid paying via Wire Transfer, Western Union, or Gift Cards — these are common scam methods.\n• Check for spelling errors on the page.\n• Verify the 'customs fee' or 'delivery' directly on the official carrier's website.";
-      return advice + financialAdvice;
+      if (score >= 70) return "🚨 STOP! Do NOT pay or enter bank details here. High risk of fraud.";
+      if (score >= 40) return "⚠️ Be very careful with payments here. Watch out for fake fees.";
+      return "✅ Payment page looks safe. Ensure the site uses HTTPS.";
     }
 
     const defaults = [
@@ -1106,47 +1107,15 @@
       msgArea.scrollTop = msgArea.scrollHeight;
     }
 
-    // Helper: inject risk score card at top of messages
-    function injectRiskCard() {
-      if (riskScore == null) return;
-      const level = riskScore >= 70 ? 'danger' : riskScore >= 40 ? 'warn' : 'safe';
-      const icons = { safe: '✅', warn: '⚠️', danger: '⛔' };
-      const labels = { safe: 'Safe', warn: 'Suspicious', danger: 'Dangerous' };
-      const card = document.createElement("div");
-      card.className = `catphis-risk-card ${level}`;
-      const ttl = document.createElement("div");
-      ttl.className = "catphis-risk-card-title";
-      ttl.innerHTML = `${icons[level]} <span>${labels[level]}</span> <span style="margin-left:auto;font-weight:400;font-size:12px;">${riskScore}/100</span>`;
-      const barBg = document.createElement("div");
-      barBg.className = "catphis-risk-bar-bg";
-      const barFill = document.createElement("div");
-      barFill.className = `catphis-risk-bar-fill ${level}`;
-      barFill.style.width = "0%";
-      barBg.appendChild(barFill);
-      card.append(ttl, barBg);
-      if (verdict) {
-        const vd = document.createElement("div");
-        vd.style.cssText = "font-size:11px;opacity:.7;margin-bottom:5px;";
-        vd.textContent = `Verdict: ${verdict}`;
-        card.appendChild(vd);
-      }
-      msgArea.appendChild(card);
-      // Animate bar after paint
-      requestAnimationFrame(() => requestAnimationFrame(() => { barFill.style.width = riskScore + "%"; }));
-    }
-
     if (conversationHistory.length === 0) {
-      injectRiskCard();
       addMsg("Meow! 🐈‍⬛ I'm CatPhish. Ask me about this page's safety!", "bot");
     } else {
-      injectRiskCard();
       conversationHistory.forEach(m => addMsg(m.content, m.role === "user" ? "user" : "bot"));
       setTimeout(() => msgArea.scrollTop = msgArea.scrollHeight, 50);
     }
-    
+
     // Expose for external calls (like email scans)
     window.__catphisAddMsg = addMsg;
-    window.__catphisInjectRiskCard = injectRiskCard;
 
 
     const inputArea = document.createElement("div");
@@ -1237,9 +1206,9 @@
     quickQuestions.forEach(q => {
       addQuickBtn(q, () => {
         if (q === "Scan this email") {
-            if (window.__catphisForceScanEmail) window.__catphisForceScanEmail();
+          if (window.__catphisForceScanEmail) window.__catphisForceScanEmail();
         } else {
-            input.value = q; send(); 
+          input.value = q; send();
         }
       });
     });
@@ -1277,11 +1246,11 @@
 
       if (!msgText) {
         if (typeof isChatPage === "function" && isChatPage()) {
-            msgText = extractChatDataFast();
-            source = "auto_chat_scan";
+          msgText = extractChatDataFast();
+          source = "auto_chat_scan";
         } else {
-            msgText = extractPageText();
-            source = "visible_page";
+          msgText = extractPageText();
+          source = "visible_page";
         }
       }
 
@@ -1299,27 +1268,27 @@
 
       try {
         const payload = {
-            message_text: msgText,
-            page_url: PAGE_URL,
-            source: source
+          message_text: msgText,
+          page_url: PAGE_URL,
+          source: source
         };
-        
+
         const response = await new Promise((resolve) => {
-            chrome.runtime.sendMessage({ action: "fetch-message", payload: payload }, (res) => {
-                if (chrome.runtime.lastError) resolve({ error: true, text: chrome.runtime.lastError.message, status: 0 });
-                else resolve(res);
-            });
+          chrome.runtime.sendMessage({ action: "fetch-message", payload: payload }, (res) => {
+            if (chrome.runtime.lastError) resolve({ error: true, text: chrome.runtime.lastError.message, status: 0 });
+            else resolve(res);
+          });
         });
-        
+
         if (response.error || !response.data) {
-            throw new Error(response.text || "Backend offline");
+          throw new Error(response.text || "Backend offline");
         }
-        
-        handleScamResult(response.data);
+
+        handleScamResult(response.data, msgText);
       } catch (err) {
         // Fallback analysis
         const result = fallbackScamAnalysis(msgText);
-        handleScamResult(result);
+        handleScamResult(result, msgText);
       }
 
       scamBtn.disabled = false;
@@ -1328,213 +1297,220 @@
     quickBtnsArea.appendChild(scamBtn);
 
     function fallbackScamAnalysis(text) {
-        const t = text.toLowerCase();
-        let score = 0;
-        let reasons = [];
-        
-        if (t.match(/mom|dad|son|daughter|mum/) && t.includes("new number")) { score += 80; reasons.push("Family impersonation"); }
-        if (t.includes("send money") || t.includes("lost my phone") || t.includes("broken phone") || t.includes("transfer needed")) { score += 60; reasons.push("Emergency money request"); }
-        if (t.match(/package|delivery|stuck/) && t.match(/fee|pay|customs/)) { score += 75; reasons.push("Package delivery scam"); }
-        if (t.includes("won a prize") || t.includes("claim now") || t.includes("reward") || t.includes("lottery")) { score += 70; reasons.push("Prize scam"); }
-        if (t.includes("account is locked") || t.includes("bank account locked")) { score += 85; reasons.push("Bank account lock scam"); }
-        if (t.match(/gift card|crypto|bitcoin|wire transfer/)) { score += 50; reasons.push("Request for untraceable payment"); }
-        if (t.match(/urgent|immediately|asap|act now/)) { score += 20; reasons.push("Urgent pressure language"); }
-        
-        score = Math.min(100, score);
-        let verdict = "Safe";
-        let advice = "This message doesn't trigger our basic scam filters, but always stay alert.";
-        if (score >= 70) { verdict = "Scam"; advice = "This looks like a known scam. Do not reply or send money."; }
-        else if (score >= 40) { verdict = "Suspicious"; advice = "This message contains suspicious language. Verify the sender's identity."; }
-        
-        return { risk_score: score, verdict: verdict, reasons: reasons, advice: advice };
+      const t = text.toLowerCase();
+      let score = 0;
+      let reasons = [];
+
+      if (t.match(/mom|dad|son|daughter|mum/) && t.includes("new number")) { score += 80; reasons.push("Family impersonation"); }
+      if (t.includes("send money") || t.includes("lost my phone") || t.includes("broken phone") || t.includes("transfer needed")) { score += 60; reasons.push("Emergency money request"); }
+      if (t.match(/package|delivery|stuck/) && t.match(/fee|pay|customs/)) { score += 75; reasons.push("Package delivery scam"); }
+      if (t.includes("won a prize") || t.includes("claim now") || t.includes("reward") || t.includes("lottery")) { score += 70; reasons.push("Prize scam"); }
+      if (t.includes("account is locked") || t.includes("bank account locked")) { score += 85; reasons.push("Bank account lock scam"); }
+      if (t.match(/gift card|crypto|bitcoin|wire transfer/)) { score += 50; reasons.push("Request for untraceable payment"); }
+      if (t.match(/urgent|immediately|asap|act now/)) { score += 20; reasons.push("Urgent pressure language"); }
+
+      score = Math.min(100, score);
+      let verdict = "Safe";
+      let advice = "This message doesn't trigger our basic scam filters, but always stay alert.";
+      if (score >= 70) { verdict = "Scam"; advice = "This looks like a known scam. Do not reply or send money."; }
+      else if (score >= 40) { verdict = "Suspicious"; advice = "This message contains suspicious language. Verify the sender's identity."; }
+
+      return { risk_score: score, verdict: verdict, reasons: reasons, advice: advice };
     }
 
-    function handleScamResult(result) {
-        chrome.storage.local.set({ lastMessageAnalysis: result });
-        
-        // Update visuals dynamically
-        if (window.__catphisUpdateVisuals) {
-            window.__catphisUpdateVisuals(result.risk_score);
-        }
+    function handleScamResult(result, scannedText = "") {
+      try { chrome.storage.local.set({ lastMessageAnalysis: result }); } catch (e) { }
 
-        // Send a chat message
-        const chatMsg = `I checked the message. Verdict: **${result.verdict}** (Score: ${result.risk_score}/100).\n\nAdvice: ${result.advice}`;
-        
-        if (!chat.classList.contains("open")) {
-            chat.classList.add("open");
-            bubble.style.display = "none";
-        }
-        
-        addMsg(chatMsg, "bot");
-        conversationHistory.push({ role: "assistant", content: chatMsg });
-        saveHistory();
+      // Update visuals dynamically
+      if (window.__catphisUpdateVisuals) {
+        window.__catphisUpdateVisuals(result.risk_score);
+      }
+
+      // Send a chat message
+      let snippet = "";
+      if (scannedText) {
+        let truncated = scannedText.substring(0, 60);
+        if (scannedText.length > 60) truncated += "...";
+        snippet = `*Scanned:* "${truncated}"\n\n`;
+      }
+
+      const chatMsg = `${snippet}Verdict: **${result.verdict}** (Score: ${result.risk_score}/100).\nAdvice: ${result.advice}`;
+
+      if (!chat.classList.contains("open")) {
+        chat.classList.add("open");
+        bubble.style.display = "none";
+      }
+
+      addMsg(chatMsg, "bot");
+      conversationHistory.push({ role: "assistant", content: chatMsg });
+      saveHistory();
     }
 
     // ── Fake Shopping Site Detection ──
     function isShoppingPage() {
-        const txt = (document.body.innerText || "").toLowerCase();
-        const url = window.location.href.toLowerCase();
-        
-        if (url.includes("checkout") || url.includes("cart") || url.includes("shop") || url.includes("store")) return true;
-        
-        let score = 0;
-        if (txt.includes("add to cart") || txt.includes("add to bag")) score++;
-        if (txt.includes("buy now") || txt.includes("checkout")) score++;
-        if (txt.includes("price:") || txt.includes("sale")) score++;
-        if (txt.match(/\$\d+(\.\d{2})?|€\d+(\.\d{2})?|£\d+(\.\d{2})?/)) score++;
-        
-        return score >= 2;
+      const txt = (document.body.innerText || "").toLowerCase();
+      const url = window.location.href.toLowerCase();
+
+      if (url.includes("checkout") || url.includes("cart") || url.includes("shop") || url.includes("store")) return true;
+
+      let score = 0;
+      if (txt.includes("add to cart") || txt.includes("add to bag")) score++;
+      if (txt.includes("buy now") || txt.includes("checkout")) score++;
+      if (txt.includes("price:") || txt.includes("sale")) score++;
+      if (txt.match(/\$\d+(\.\d{2})?|€\d+(\.\d{2})?|£\d+(\.\d{2})?/)) score++;
+
+      return score >= 2;
     }
 
     function extractShoppingData() {
-        const txt = (document.body.innerText || "").toLowerCase();
-        const priceMatches = txt.match(/\$\d+(\.\d{2})?|€\d+(\.\d{2})?|£\d+(\.\d{2})?/g) || [];
-        const paymentWords = ["crypto", "bitcoin", "ethereum", "gift card", "wire transfer", "western union", "bank transfer", "paypal", "credit card", "visa", "mastercard"];
-        const foundPayments = paymentWords.filter(w => txt.includes(w));
-        
-        const links = Array.from(document.querySelectorAll("a")).map(a => ({
-            text: a.innerText.trim(),
-            href: a.href || ""
-        })).filter(l => l.href && l.href.startsWith("http")).slice(0, 100);
+      const txt = (document.body.innerText || "").toLowerCase();
+      const priceMatches = txt.match(/\$\d+(\.\d{2})?|€\d+(\.\d{2})?|£\d+(\.\d{2})?/g) || [];
+      const paymentWords = ["crypto", "bitcoin", "ethereum", "gift card", "wire transfer", "western union", "bank transfer", "paypal", "credit card", "visa", "mastercard"];
+      const foundPayments = paymentWords.filter(w => txt.includes(w));
 
-        
-        return {
-            url: window.location.href,
-            hostname: window.location.hostname,
-            title: document.title,
-            body_text: extractPageText(),
-            links: links,
-            forms: extractForms(),
-            detected_prices: [...new Set(priceMatches)].slice(0, 5),
-            detected_payment_words: foundPayments
-        };
+      const links = Array.from(document.querySelectorAll("a")).map(a => ({
+        text: a.innerText.trim(),
+        href: a.href || ""
+      })).filter(l => l.href && l.href.startsWith("http")).slice(0, 100);
+
+
+      return {
+        url: window.location.href,
+        hostname: window.location.hostname,
+        title: document.title,
+        body_text: extractPageText(),
+        links: links,
+        forms: extractForms(),
+        detected_prices: [...new Set(priceMatches)].slice(0, 5),
+        detected_payment_words: foundPayments
+      };
     }
 
     async function checkShoppingSite() {
-        const btn = Array.from(document.querySelectorAll('.catphis-quick-btn')).find(b => b.textContent.includes("Check this shop"));
-        if (btn) { btn.disabled = true; btn.textContent = "Scanning shop..."; }
+      const btn = Array.from(document.querySelectorAll('.catphis-quick-btn')).find(b => b.textContent.includes("Check this shop"));
+      if (btn) { btn.disabled = true; btn.textContent = "Scanning shop..."; }
 
-        try {
-            const shopData = extractShoppingData();
-            console.log("[CatPhish] Sending shop data to background...", shopData.hostname);
-            
-            const response = await new Promise((resolve) => {
-                chrome.runtime.sendMessage({ action: "fetch-shopping", payload: shopData }, (res) => {
-                    if (chrome.runtime.lastError) {
-                        console.warn("[CatPhish] Shop sendMessage error:", chrome.runtime.lastError.message);
-                        resolve({ error: true, text: chrome.runtime.lastError.message, status: 0 });
-                    } else {
-                        resolve(res || { error: true, text: "No response from background", status: 0 });
-                    }
-                });
-            });
-            
-            console.log("[CatPhish] Shop response:", response);
-            
-            if (response.error) {
-                // Try local fallback if backend is unreachable
-                const localResult = localShoppingFallback(shopData);
-                handleShoppingResult(localResult);
-                if (response.status === 0) {
-                    showToast("⚠️ Backend offline — using local analysis", "rgba(245,158,11,.9)");
-                }
-            } else if (response.data) {
-                handleShoppingResult(response.data);
+      try {
+        const shopData = extractShoppingData();
+        console.log("[CatPhish] Sending shop data to background...", shopData.hostname);
+
+        const response = await new Promise((resolve) => {
+          chrome.runtime.sendMessage({ action: "fetch-shopping", payload: shopData }, (res) => {
+            if (chrome.runtime.lastError) {
+              console.warn("[CatPhish] Shop sendMessage error:", chrome.runtime.lastError.message);
+              resolve({ error: true, text: chrome.runtime.lastError.message, status: 0 });
+            } else {
+              resolve(res || { error: true, text: "No response from background", status: 0 });
             }
-        } catch (err) {
-            console.error("[CatPhish] checkShoppingSite exception:", err);
-            showToast("⚠️ JS Error: " + err.message, "rgba(245,158,11,.9)");
-        }
+          });
+        });
 
-        if (btn) { btn.disabled = false; btn.textContent = "🛒 Check this shop"; }
+        console.log("[CatPhish] Shop response:", response);
+
+        if (response.error) {
+          // Try local fallback if backend is unreachable
+          const localResult = localShoppingFallback(shopData);
+          handleShoppingResult(localResult);
+          if (response.status === 0) {
+            showToast("⚠️ Backend offline — using local analysis", "rgba(245,158,11,.9)");
+          }
+        } else if (response.data) {
+          handleShoppingResult(response.data);
+        }
+      } catch (err) {
+        console.error("[CatPhish] checkShoppingSite exception:", err);
+        showToast("⚠️ JS Error: " + err.message, "rgba(245,158,11,.9)");
+      }
+
+      if (btn) { btn.disabled = false; btn.textContent = "🛒 Check this shop"; }
     }
 
     function localShoppingFallback(shopData) {
-        let score = 0;
-        const reasons = [];
-        const txt = shopData.body_text.toLowerCase();
-        const host = shopData.hostname.toLowerCase();
+      let score = 0;
+      const reasons = [];
+      const txt = shopData.body_text.toLowerCase();
+      const host = shopData.hostname.toLowerCase();
 
-        const discountPhrases = ["80% off","90% off","70% off","clearance","today only","limited stock","liquidation"];
-        if (discountPhrases.some(p => txt.includes(p))) { score += 35; reasons.push("Extreme discount language detected"); }
+      const discountPhrases = ["80% off", "90% off", "70% off", "clearance", "today only", "limited stock", "liquidation"];
+      if (discountPhrases.some(p => txt.includes(p))) { score += 35; reasons.push("Extreme discount language detected"); }
 
-        const suspPayments = ["crypto","bitcoin","gift card","wire transfer","western union"];
-        const found = [...shopData.detected_payment_words, ...suspPayments.filter(w => txt.includes(w))];
-        if (found.length > 0) { score += 45; reasons.push("Suspicious payment methods: " + [...new Set(found)].join(", ")); }
+      const suspPayments = ["crypto", "bitcoin", "gift card", "wire transfer", "western union"];
+      const found = [...shopData.detected_payment_words, ...suspPayments.filter(w => txt.includes(w))];
+      if (found.length > 0) { score += 45; reasons.push("Suspicious payment methods: " + [...new Set(found)].join(", ")); }
 
-        if (!txt.includes("contact") && !txt.includes("return") && !txt.includes("refund")) { score += 25; reasons.push("Missing trust signals (contact/return policy)"); }
+      if (!txt.includes("contact") && !txt.includes("return") && !txt.includes("refund")) { score += 25; reasons.push("Missing trust signals (contact/return policy)"); }
 
-        const weirdTlds = [".top",".vip",".club",".shop",".xyz",".online",".site",".cyou"];
-        if (weirdTlds.some(t => host.endsWith(t))) { score += 20; reasons.push("Suspicious domain extension"); }
-        if ((host.match(/-/g) || []).length >= 2) { score += 15; reasons.push("Domain contains multiple hyphens"); }
+      const weirdTlds = [".top", ".vip", ".club", ".shop", ".xyz", ".online", ".site", ".cyou"];
+      if (weirdTlds.some(t => host.endsWith(t))) { score += 20; reasons.push("Suspicious domain extension"); }
+      if ((host.match(/-/g) || []).length >= 2) { score += 15; reasons.push("Domain contains multiple hyphens"); }
 
-        score = Math.min(100, score);
-        const verdict = score >= 85 ? "Likely Scam" : score >= 50 ? "Suspicious" : "Safe";
-        const advice = score >= 85
-            ? "This store shows multiple high-risk scam indicators. DO NOT enter your card details."
-            : score >= 50
-            ? "Proceed with extreme caution. Use PayPal or a credit card only."
-            : "No obvious scam signals found. Always use a secure payment method.";
+      score = Math.min(100, score);
+      const verdict = score >= 85 ? "Likely Scam" : score >= 50 ? "Suspicious" : "Safe";
+      const advice = score >= 85
+        ? "This store shows multiple high-risk scam indicators. DO NOT enter your card details."
+        : score >= 50
+          ? "Proceed with extreme caution. Use PayPal or a credit card only."
+          : "No obvious scam signals found. Always use a secure payment method.";
 
-        return { risk_score: score, verdict, reasons: reasons.length ? reasons : ["Shop looks standard"], advice };
+      return { risk_score: score, verdict, reasons: reasons.length ? reasons : ["Shop looks standard"], advice };
     }
 
     function handleShoppingResult(result) {
-        chrome.storage.local.set({ lastShoppingAnalysis: result });
-        
-        // Log to Family Safety Dashboard
-        saveFamilySafetyEvent({
-          type: "shopping",
-          risk_score: result.risk_score,
-          verdict: result.verdict,
-          title: document.title || window.location.hostname,
-          url: window.location.href,
-          reasons: result.reasons || [],
-          advice: result.advice || ""
-        });
+      chrome.storage.local.set({ lastShoppingAnalysis: result });
 
-        // Update glow
-        glow.className = "catphis-glow";
-        if (result.risk_score >= 85) glow.classList.add("danger");
-        else if (result.risk_score >= 50) glow.classList.add("warn");
-        else glow.classList.add("safe");
+      // Log to Family Safety Dashboard
+      saveFamilySafetyEvent({
+        type: "shopping",
+        risk_score: result.risk_score,
+        verdict: result.verdict,
+        title: document.title || window.location.hostname,
+        url: window.location.href,
+        reasons: result.reasons || [],
+        advice: result.advice || ""
+      });
 
-        // Add extra chat questions specific to shopping
-        ["Can I buy from here?", "Why is this shop risky?"].forEach(q => {
-            addQuickBtn(q, () => { input.value = q; send(); }, { borderColor: "rgba(167, 139, 250, .3)", color: "#a78bfa" });
-        });
+      // Update glow
+      glow.className = "catphis-glow";
+      if (result.risk_score >= 85) glow.classList.add("danger");
+      else if (result.risk_score >= 50) glow.classList.add("warn");
+      else glow.classList.add("safe");
 
-        const chatMsg = `This shop looks **${result.verdict}** (Score: ${result.risk_score}/100).\n\nReasons: ${result.reasons.join(", ") || "None found."}\n\nAdvice: ${result.advice}`;
-        
-        if (!chat.classList.contains("open")) {
-            chat.classList.add("open");
-            bubble.style.display = "none";
-        }
-        
-        addMsg(chatMsg, "bot");
-        conversationHistory.push({ role: "assistant", content: chatMsg });
-        saveHistory();
-        
-        if (result.risk_score >= 85) {
-            // Optional: Show warning overlay since risk_score >= 85
-            const warning = document.createElement("div");
-            warning.style.cssText = "position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);z-index:999999;display:flex;align-items:center;justify-content:center;color:white;font-family:sans-serif;text-align:center;";
-            warning.innerHTML = `
+      // Add extra chat questions specific to shopping
+      ["Can I buy from here?", "Why is this shop risky?"].forEach(q => {
+        addQuickBtn(q, () => { input.value = q; send(); }, { borderColor: "rgba(167, 139, 250, .3)", color: "#a78bfa" });
+      });
+
+      const chatMsg = `This shop looks **${result.verdict}** (Score: ${result.risk_score}/100).\n\nReasons: ${result.reasons.join(", ") || "None found."}\n\nAdvice: ${result.advice}`;
+
+      if (!chat.classList.contains("open")) {
+        chat.classList.add("open");
+        bubble.style.display = "none";
+      }
+
+      addMsg(chatMsg, "bot");
+      conversationHistory.push({ role: "assistant", content: chatMsg });
+      saveHistory();
+
+      if (result.risk_score >= 85) {
+        // Optional: Show warning overlay since risk_score >= 85
+        const warning = document.createElement("div");
+        warning.style.cssText = "position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);z-index:999999;display:flex;align-items:center;justify-content:center;color:white;font-family:sans-serif;text-align:center;";
+        warning.innerHTML = `
                 <div style="background:#1f2937;padding:40px;border-radius:12px;max-width:500px;border:2px solid #ef4444;">
                     <h1 style="color:#ef4444;margin-top:0;">⛔ HIGH RISK SHOP ⛔</h1>
                     <p style="font-size:16px;">We detected multiple scam indicators on this store. We strongly advise against making any purchases or entering card details.</p>
                     <button id="catphis-dismiss-warning" style="margin-top:20px;padding:10px 20px;background:#ef4444;color:white;border:none;border-radius:6px;cursor:pointer;font-weight:bold;">I understand, let me proceed</button>
                 </div>
             `;
-            document.body.appendChild(warning);
-            document.getElementById("catphis-dismiss-warning").onclick = () => warning.remove();
-        }
+        document.body.appendChild(warning);
+        document.getElementById("catphis-dismiss-warning").onclick = () => warning.remove();
+      }
     }
 
     addQuickBtn("🛒 Check this shop", checkShoppingSite, { borderColor: "rgba(59,130,246,.3)", color: "#60a5fa" });
 
     if (isShoppingPage() && !verdict) {
-        setTimeout(checkShoppingSite, 1500);
+      setTimeout(checkShoppingSite, 1500);
     }
 
     sendBtn.onclick = send;
@@ -1677,11 +1653,11 @@
           } else {
             bubble.textContent = score >= 70 ? "⛔ STOP! High risk! Don't type your password!" : "⚠️ Caution: Suspicious page for a password.";
           }
-          
+
           bubble.style.borderColor = score >= 70 ? "rgba(239,68,68,.6)" : "rgba(245,158,11,.5)";
           bubble.style.display = "block";
           bubble.style.opacity = "1";
-          
+
           logFamilySafetyEvent(isPayment ? "payment_input_focus" : "password_input_focus", {
             risk_score: score,
             element_id: id,
@@ -1691,14 +1667,14 @@
           // Show chat if not open
           if (!chat.classList.contains("open")) {
             setTimeout(() => {
-                chat.classList.add("open");
-                const typeText = isPayment ? "payment or bank details" : "a password or code";
-                const elderlyText = elderlyModeEnabled ? "\n\n👴 Elderly Mode: This page is asking for money. Please ask for help." : "";
-                addMsg(`I noticed you're about to enter ${typeText}. My analysis says this page is ${score >= 70 ? "DANGEROUS" : "SUSPICIOUS"}. Please be very careful!${elderlyText}`, "bot");
+              chat.classList.add("open");
+              const typeText = isPayment ? "payment or bank details" : "a password or code";
+              const elderlyText = elderlyModeEnabled ? "\n\n👴 Elderly Mode: This page is asking for money. Please ask for help." : "";
+              addMsg(`I noticed you're about to enter ${typeText}. My analysis says this page is ${score >= 70 ? "DANGEROUS" : "SUSPICIOUS"}. Please be very careful!${elderlyText}`, "bot");
             }, 500);
           }
         } else {
-            logFamilySafetyEvent(isPayment ? "payment_input_focus_low_risk" : "password_input_focus_low_risk", { risk_score: score });
+          logFamilySafetyEvent(isPayment ? "payment_input_focus_low_risk" : "password_input_focus_low_risk", { risk_score: score });
         }
       }
     }, true);
@@ -1823,17 +1799,17 @@
 
   function isWebmailPage() {
     const h = window.location.hostname;
-    return h.includes("mail.google.com") || 
-           h.includes("outlook.live.com") || 
-           h.includes("mail.yahoo.com") ||
-           document.querySelector('article, [role="main"]') != null;
+    return h.includes("mail.google.com") ||
+      h.includes("outlook.live.com") ||
+      h.includes("mail.yahoo.com") ||
+      document.querySelector('article, [role="main"]') != null;
   }
 
   function findVisibleEmailContainer() {
     // If Gmail is just showing the inbox list without an email open, abort
     if (window.location.hostname.includes("mail.google.com")) {
-        const hash = window.location.hash.split('/')[0];
-        if (hash === "#inbox" && window.location.hash.split('/').length === 1) return null;
+      const hash = window.location.hash.split('/')[0];
+      if (hash === "#inbox" && window.location.hash.split('/').length === 1) return null;
     }
 
     const selectors = [
@@ -1847,24 +1823,24 @@
     for (const sel of selectors) {
       const els = Array.from(document.querySelectorAll(sel));
       const visibleEls = els.filter(el => {
-          const rect = el.getBoundingClientRect();
-          return rect.height > 20 && rect.width > 50 && rect.top < window.innerHeight && rect.bottom > 0;
+        const rect = el.getBoundingClientRect();
+        return rect.height > 20 && rect.width > 50 && rect.top < window.innerHeight && rect.bottom > 0;
       });
       if (visibleEls.length > 0) {
-          return visibleEls.reduce((max, el) => el.getBoundingClientRect().height > max.getBoundingClientRect().height ? el : max, visibleEls[0]);
+        return visibleEls.reduce((max, el) => el.getBoundingClientRect().height > max.getBoundingClientRect().height ? el : max, visibleEls[0]);
       }
     }
-    
+
     // Ultimate fallback for Gmail
     if (window.location.hostname.includes("mail.google.com")) {
-        const allTextDivs = Array.from(document.querySelectorAll('div[dir="ltr"]'));
-        const visibleDivs = allTextDivs.filter(el => {
-            const rect = el.getBoundingClientRect();
-            return rect.height > 10 && rect.width > 50 && rect.top > 0 && rect.bottom < window.innerHeight;
-        });
-        if (visibleDivs.length > 0) return visibleDivs[visibleDivs.length - 1];
+      const allTextDivs = Array.from(document.querySelectorAll('div[dir="ltr"]'));
+      const visibleDivs = allTextDivs.filter(el => {
+        const rect = el.getBoundingClientRect();
+        return rect.height > 10 && rect.width > 50 && rect.top > 0 && rect.bottom < window.innerHeight;
+      });
+      if (visibleDivs.length > 0) return visibleDivs[visibleDivs.length - 1];
     }
-    
+
     return null;
   }
 
@@ -1878,34 +1854,34 @@
 
     const gmailSubject = document.querySelector('h2.hP, .hP, [data-thread-perm-id]');
     if (gmailSubject) subject = gmailSubject.innerText;
-    
+
     const gmailSender = document.querySelector('[email], [data-hovercard-id], .gD');
     if (gmailSender) {
-        senderEmail = gmailSender.getAttribute('email') || gmailSender.getAttribute('data-hovercard-id') || "";
-        sender = gmailSender.innerText;
+      senderEmail = gmailSender.getAttribute('email') || gmailSender.getAttribute('data-hovercard-id') || "";
+      sender = gmailSender.innerText;
     } else {
-        const outlookSubj = document.querySelector('[role="heading"], h1, h2');
-        if (outlookSubj) subject = outlookSubj.innerText;
-        
-        const possibleEmails = document.querySelectorAll('[title*="@"], span[aria-label*="@"], a[href^="mailto:"]');
-        if (possibleEmails.length > 0) {
-            const el = possibleEmails[0];
-            senderEmail = el.getAttribute('title') || el.getAttribute('aria-label') || (el.href || "").replace('mailto:', '');
-            sender = el.innerText || senderEmail;
-        }
+      const outlookSubj = document.querySelector('[role="heading"], h1, h2');
+      if (outlookSubj) subject = outlookSubj.innerText;
+
+      const possibleEmails = document.querySelectorAll('[title*="@"], span[aria-label*="@"], a[href^="mailto:"]');
+      if (possibleEmails.length > 0) {
+        const el = possibleEmails[0];
+        senderEmail = el.getAttribute('title') || el.getAttribute('aria-label') || (el.href || "").replace('mailto:', '');
+        sender = el.innerText || senderEmail;
+      }
     }
 
     const links = [];
     const aTags = Array.from(container.querySelectorAll('a'));
     for (const a of aTags) {
-        if (links.length >= 25) break;
-        const href = a.href || "";
-        const text = (a.innerText || "").trim();
-        if (href && !href.startsWith("mailto:") && !href.startsWith("javascript:") && !href.startsWith("chrome-extension:") && !href.startsWith("about:")) {
-            if (text && text.length > 1) {
-                links.push({ href: href, text: text });
-            }
+      if (links.length >= 25) break;
+      const href = a.href || "";
+      const text = (a.innerText || "").trim();
+      if (href && !href.startsWith("mailto:") && !href.startsWith("javascript:") && !href.startsWith("chrome-extension:") && !href.startsWith("about:")) {
+        if (text && text.length > 1) {
+          links.push({ href: href, text: text });
         }
+      }
     }
 
     return {
@@ -1922,47 +1898,50 @@
     const s = emailData.sender_email + "|" + emailData.subject + "|" + emailData.body_text.substring(0, 500) + "|" + emailData.links.map(l => l.href).join(',');
     let hash = 0;
     for (let i = 0; i < s.length; i++) {
-        hash = ((hash << 5) - hash) + s.charCodeAt(i);
-        hash |= 0;
+      hash = ((hash << 5) - hash) + s.charCodeAt(i);
+      hash |= 0;
     }
     return hash.toString();
   }
 
   async function shouldSkipEmailScan(fingerprint, emailData) {
     if (fingerprint === lastScannedEmailFingerprint) return true;
-    const data = await new Promise(res => chrome.storage.local.get("emailCache", res));
+    let data = {};
+    try { data = await new Promise(res => chrome.storage.local.get("emailCache", res)); } catch (e) { }
     const cache = data.emailCache || {};
     if (cache[fingerprint]) {
-        lastScannedEmailFingerprint = fingerprint;
-        const result = cache[fingerprint];
-        updateEmailRiskUI(result);
-        addEmailScanMessage(result, "cache", emailData);
-        return true;
+      lastScannedEmailFingerprint = fingerprint;
+      const result = cache[fingerprint];
+      updateEmailRiskUI(result);
+      addEmailScanMessage(result, "cache", emailData);
+      return true;
     }
     return false;
   }
 
   function saveEmailToCache(fingerprint, result) {
     lastScannedEmailFingerprint = fingerprint;
-    chrome.storage.local.get("emailCache", data => {
+    try {
+      chrome.storage.local.get("emailCache", data => {
         const cache = data.emailCache || {};
         cache[fingerprint] = result;
         const keys = Object.keys(cache);
         if (keys.length > 50) delete cache[keys[0]];
         chrome.storage.local.set({ emailCache: cache });
-    });
+      });
+    } catch (e) { }
   }
 
   function quickLocalEmailPrecheck(emailData) {
     if (emailData.links.length === 0) {
-        const urgentWords = ["urgent", "verify", "suspended", "locked", "immediate", "expire", "action required"];
-        const credWords = ["password", "login", "sign in", "account", "card", "payment"];
-        const bodyL = emailData.body_text.toLowerCase();
-        if (!urgentWords.some(w => bodyL.includes(w)) && !credWords.some(w => bodyL.includes(w))) {
-            return {
-                risk_score: 0, verdict: "Safe", reasons: ["No links and no suspicious keywords found."], dangerous_links: []
-            };
-        }
+      const urgentWords = ["urgent", "verify", "suspended", "locked", "immediate", "expire", "action required"];
+      const credWords = ["password", "login", "sign in", "account", "card", "payment"];
+      const bodyL = emailData.body_text.toLowerCase();
+      if (!urgentWords.some(w => bodyL.includes(w)) && !credWords.some(w => bodyL.includes(w))) {
+        return {
+          risk_score: 0, verdict: "Safe", reasons: ["No links and no suspicious keywords found."], dangerous_links: []
+        };
+      }
     }
     return null;
   }
@@ -1984,65 +1963,65 @@
     const sName = emailData.sender.toLowerCase();
 
     if (urgentWords.some(w => subj.includes(w) || body.includes(w))) {
-        score += 25; reasons.push("Urgent or threatening language detected");
+      score += 25; reasons.push("Urgent or threatening language detected");
     }
     if (credWords.some(w => body.includes(w))) {
-        score += 15; reasons.push("Requests credentials or sensitive information");
+      score += 15; reasons.push("Requests credentials or sensitive information");
     }
     if (brands.some(b => sName.includes(b) && !sEmail.includes(b))) {
-        score += 30; reasons.push("Sender name mimics a brand but email address does not match");
+      score += 30; reasons.push("Sender name mimics a brand but email address does not match");
     }
 
     // Scam Message rules merged into email
     if (body.match(/gift card|crypto|bitcoin|wire transfer|itunes/)) {
-        score += 50; reasons.push("Request for untraceable payment (gift card/crypto)");
+      score += 50; reasons.push("Request for untraceable payment (gift card/crypto)");
     }
     if (body.includes("account is locked") || body.includes("bank account locked")) {
-        score += 85; reasons.push("Bank account lock scam");
+      score += 85; reasons.push("Bank account lock scam");
     }
     if (body.match(/mom|dad|son|daughter|mum/) && body.includes("new number")) {
-        score += 80; reasons.push("Family impersonation");
+      score += 80; reasons.push("Family impersonation");
     }
     if (body.includes("send money") || body.includes("lost my phone") || body.includes("transfer needed")) {
-        score += 60; reasons.push("Emergency money request");
+      score += 60; reasons.push("Emergency money request");
     }
     if (body.match(/package|delivery|stuck/) && body.match(/fee|pay|customs/)) {
-        score += 75; reasons.push("Package delivery scam");
+      score += 75; reasons.push("Package delivery scam");
     }
     if (body.includes("won a prize") || body.includes("claim now") || body.includes("lottery")) {
-        score += 70; reasons.push("Prize scam");
+      score += 70; reasons.push("Prize scam");
     }
 
     emailData.links.forEach(link => {
-        const h = link.href.toLowerCase();
-        const t = link.text.toLowerCase();
-        
-        let looksLikeUrl = t.includes(".") && !t.includes(" ");
-        if (looksLikeUrl) {
-            let tDomain = t.replace('http://', '').replace('https://', '').split('/')[0];
-            let hDomain = h.replace('http://', '').replace('https://', '').split('/')[0];
-            if (tDomain && hDomain && tDomain !== hDomain) {
-                score += 40; reasons.push("Link text destination mismatch (spoofed link)"); dangerous_links.push(link.href);
-            }
-        }
+      const h = link.href.toLowerCase();
+      const t = link.text.toLowerCase();
 
-        let linkDomain = h.replace('http://', '').replace('https://', '').split('/')[0] || "";
-
-        if (h.startsWith("http") && linkDomain.includes("@")) {
-            score += 75; reasons.push("URL obfuscation detected (credentials in link)"); dangerous_links.push(link.href);
+      let looksLikeUrl = t.includes(".") && !t.includes(" ");
+      if (looksLikeUrl) {
+        let tDomain = t.replace('http://', '').replace('https://', '').split('/')[0];
+        let hDomain = h.replace('http://', '').replace('https://', '').split('/')[0];
+        if (tDomain && hDomain && tDomain !== hDomain) {
+          score += 40; reasons.push("Link text destination mismatch (spoofed link)"); dangerous_links.push(link.href);
         }
-        
-        brands.forEach(b => {
-            if (linkDomain.includes(b) && linkDomain !== `${b}.com`) {
-                score += 40; reasons.push("Link domain mimics a brand"); dangerous_links.push(link.href);
-            }
-        });
+      }
 
-        if (shortUrls.some(s => h.includes(s))) {
-            score += 20; reasons.push("Contains shortened URLs"); dangerous_links.push(link.href);
-        } else if (suspUrls.some(s => h.includes(s))) {
-            score += 15; reasons.push("Suspicious keywords in links"); dangerous_links.push(link.href);
+      let linkDomain = h.replace('http://', '').replace('https://', '').split('/')[0] || "";
+
+      if (h.startsWith("http") && linkDomain.includes("@")) {
+        score += 75; reasons.push("URL obfuscation detected (credentials in link)"); dangerous_links.push(link.href);
+      }
+
+      brands.forEach(b => {
+        if (linkDomain.includes(b) && linkDomain !== `${b}.com`) {
+          score += 40; reasons.push("Link domain mimics a brand"); dangerous_links.push(link.href);
         }
+      });
+
+      if (shortUrls.some(s => h.includes(s))) {
+        score += 20; reasons.push("Contains shortened URLs"); dangerous_links.push(link.href);
+      } else if (suspUrls.some(s => h.includes(s))) {
+        score += 15; reasons.push("Suspicious keywords in links"); dangerous_links.push(link.href);
+      }
     });
 
     reasons = [...new Set(reasons)];
@@ -2052,7 +2031,7 @@
     let verdict = "Safe";
     if (score >= 70) verdict = "Phishing";
     else if (score >= 40) verdict = "Suspicious";
-    
+
     if (reasons.length === 0) reasons.push("Email looks mostly safe");
 
     return { risk_score: score, verdict, reasons, dangerous_links };
@@ -2060,19 +2039,19 @@
 
   async function analyzeEmailWithTimeout(emailData) {
     try {
-        const response = await new Promise((resolve) => {
-            chrome.runtime.sendMessage({ action: "fetch-email", payload: emailData }, resolve);
-        });
-        if (response && response.data && !response.error) {
-            return response.data;
-        }
-    } catch (e) {}
+      const response = await new Promise((resolve) => {
+        chrome.runtime.sendMessage({ action: "fetch-email", payload: emailData }, resolve);
+      });
+      if (response && response.data && !response.error) {
+        return response.data;
+      }
+    } catch (e) { }
     return null;
   }
 
   function updateEmailRiskUI(result, isLoading = false) {
     if (window.__catphisUpdateVisuals) {
-        window.__catphisUpdateVisuals(result ? result.risk_score : 0, isLoading);
+      window.__catphisUpdateVisuals(result ? result.risk_score : 0, isLoading);
     }
   }
 
@@ -2081,86 +2060,86 @@
     let msg = "";
 
     const isElderly = elderlyModeEnabled;
-    
+
     if (emailData && emailData.subject && !isElderly) {
-        msg += `[Scanning: "${emailData.subject.substring(0, 30)}..."]\n`;
+      msg += `[Scanning: "${emailData.subject.substring(0, 30)}..."]\n`;
     }
 
     if (source === "local_fallback" && !isElderly) {
-        msg += "I did a quick local scan first. I’ll update if deeper analysis finds more.\n";
+      msg += "I did a quick local scan first. I’ll update if deeper analysis finds more.\n";
     }
 
     const sensitive = detectSensitiveRequests();
     if (sensitive.isSensitive && result.risk_score >= 40) {
-        msg += "⚠️ **Warning:** This email is asking for sensitive information (password/OTP/PIN). Given the risk score, do NOT enter any details.\n";
-        logFamilySafetyEvent("sensitive_email_detected", { risk_score: result.risk_score, keywords: sensitive.foundKeywords });
+      msg += "⚠️ **Warning:** This email is asking for sensitive information (password/OTP/PIN). Given the risk score, do NOT enter any details.\n";
+      logFamilySafetyEvent("sensitive_email_detected", { risk_score: result.risk_score, keywords: sensitive.foundKeywords });
     }
 
     if (isElderly) {
-        // Simple plain-language messages for elderly mode
-        if (result.risk_score < 40) {
-            msg = "✅ This email looks safe. I did not find anything worrying. But still be careful before clicking links.";
-        } else if (result.risk_score < 70) {
-            const topReason = simplifyForElderly(result.reasons[0] || "");
-            msg = `⚠️ Something looks a bit wrong with this email.\n${topReason}\n\nPlease ask a family member before clicking anything.`;
-        } else {
-            const topReason = simplifyForElderly(result.reasons[0] || "");
-            msg = `⛔ STOP! This email may be dangerous!\n${topReason}\n\nDo NOT click any links or type your password. Ask a family member for help.`;
-        }
+      // Simple plain-language messages for elderly mode
+      if (result.risk_score < 40) {
+        msg = "✅ This email looks safe. I did not find anything worrying. But still be careful before clicking links.";
+      } else if (result.risk_score < 70) {
+        const topReason = simplifyForElderly(result.reasons[0] || "");
+        msg = `⚠️ Something looks a bit wrong with this email.\n${topReason}\n\nPlease ask a family member before clicking anything.`;
+      } else {
+        const topReason = simplifyForElderly(result.reasons[0] || "");
+        msg = `⛔ STOP! This email may be dangerous!\n${topReason}\n\nDo NOT click any links or type your password. Ask a family member for help.`;
+      }
     } else {
-        if (result.risk_score < 40) {
-            msg += "This email looks mostly safe. I did not find strong phishing signals, but still check links before clicking. ✅";
-        } else if (result.risk_score < 70) {
-            msg += `This email looks suspicious. I found signs like: ${result.reasons.slice(0,2).join(', ')}. Be careful before clicking links. ⚠️`;
-        } else {
-            msg += `This email looks dangerous. I found signs like: ${result.reasons.slice(0,2).join(', ')}. Do not click links or enter passwords. 🚫`;
-        }
+      if (result.risk_score < 40) {
+        msg += "This email looks mostly safe. I did not find strong phishing signals, but still check links before clicking. ✅";
+      } else if (result.risk_score < 70) {
+        msg += `This email looks suspicious. I found signs like: ${result.reasons.slice(0, 2).join(', ')}. Be careful before clicking links. ⚠️`;
+      } else {
+        msg += `This email looks dangerous. I found signs like: ${result.reasons.slice(0, 2).join(', ')}. Do not click links or enter passwords. 🚫`;
+      }
     }
-    
+
     // Don't repeat the exact same message for the same email
     let shouldAddChatMsg = (msg !== lastEmailScanMsg);
-    
+
     if (shouldAddChatMsg) {
-        lastEmailScanMsg = msg;
-        window.__catphisAddMsg(msg, "bot");
+      lastEmailScanMsg = msg;
+      window.__catphisAddMsg(msg, "bot");
     }
-    
+
     const chat = document.querySelector('.catphis-chat');
     const bubble = document.querySelector('.catphis-bubble');
     if (chat && !chat.classList.contains("open") && bubble) {
-        if (isElderly) {
-            bubble.textContent = result.risk_score >= 70 ? "🛑 DANGER: Dangerous email!" : (result.risk_score >= 40 ? "⚠️ WARNING: Check this email!" : "✅ Email looks safe");
-            bubble.style.fontSize = "15px";
-            bubble.style.fontWeight = "700";
-        } else {
-            bubble.textContent = result.risk_score >= 70 ? "⛔ Dangerous email detected!" : "⚠️ Suspicious email detected!";
-            if (result.risk_score < 40) bubble.textContent = "✅ Email scanned: Looks safe.";
-        }
-        bubble.style.borderColor = result.risk_score >= 70 ? "rgba(239,68,68,.6)" : (result.risk_score >= 40 ? "rgba(245,158,11,.5)" : "rgba(16,185,129,.5)");
-        bubble.style.display = "block";
-        setTimeout(() => { bubble.style.transition = "opacity .6s"; bubble.style.opacity = "0"; }, isElderly ? 12000 : 6000);
-        setTimeout(() => { bubble.style.display = "none"; bubble.style.opacity = ""; }, isElderly ? 12700 : 6700);
+      if (isElderly) {
+        bubble.textContent = result.risk_score >= 70 ? "🛑 DANGER: Dangerous email!" : (result.risk_score >= 40 ? "⚠️ WARNING: Check this email!" : "✅ Email looks safe");
+        bubble.style.fontSize = "15px";
+        bubble.style.fontWeight = "700";
+      } else {
+        bubble.textContent = result.risk_score >= 70 ? "⛔ Dangerous email detected!" : "⚠️ Suspicious email detected!";
+        if (result.risk_score < 40) bubble.textContent = "✅ Email scanned: Looks safe.";
+      }
+      bubble.style.borderColor = result.risk_score >= 70 ? "rgba(239,68,68,.6)" : (result.risk_score >= 40 ? "rgba(245,158,11,.5)" : "rgba(16,185,129,.5)");
+      bubble.style.display = "block";
+      setTimeout(() => { bubble.style.transition = "opacity .6s"; bubble.style.opacity = "0"; }, isElderly ? 12000 : 6000);
+      setTimeout(() => { bubble.style.display = "none"; bubble.style.opacity = ""; }, isElderly ? 12700 : 6700);
     }
   }
-  
+
   window.__catphisForceScanEmail = () => {
-      lastScannedEmailFingerprint = null;
-      scheduleEmailScan("manual");
+    lastScannedEmailFingerprint = null;
+    scheduleEmailScan("manual");
   };
 
   async function performEmailScan(reason) {
     const container = findVisibleEmailContainer();
     if (!container) {
-        if (currentWebmailState === "email") {
-            // We just left an email and went back to inbox. Reset UI.
-            currentWebmailState = "inbox";
-            lastScannedEmailFingerprint = null;
-            if (window.__catphisPageRiskResult) {
-                updateEmailRiskUI(window.__catphisPageRiskResult);
-            }
+      if (currentWebmailState === "email") {
+        // We just left an email and went back to inbox. Reset UI.
+        currentWebmailState = "inbox";
+        lastScannedEmailFingerprint = null;
+        if (window.__catphisPageRiskResult) {
+          updateEmailRiskUI(window.__catphisPageRiskResult);
         }
-        if (reason === "manual" && window.__catphisAddMsg) window.__catphisAddMsg("I couldn't find an open email to scan. Please open one first!", "bot");
-        return;
+      }
+      if (reason === "manual" && window.__catphisAddMsg) window.__catphisAddMsg("I couldn't find an open email to scan. Please open one first!", "bot");
+      return;
     }
 
     currentWebmailState = "email";
@@ -2177,18 +2156,18 @@
     let source = "local_precheck";
 
     if (!result) {
-        result = await analyzeEmailWithTimeout(emailData);
-        source = "backend";
-        if (!result) {
-            result = localEmailFallbackAnalysis(emailData);
-            source = "local_fallback";
-        }
+      result = await analyzeEmailWithTimeout(emailData);
+      source = "backend";
+      if (!result) {
+        result = localEmailFallbackAnalysis(emailData);
+        source = "local_fallback";
+      }
     }
 
     saveEmailToCache(fingerprint, result);
     updateEmailRiskUI(result);
     addEmailScanMessage(result, source, emailData);
-    
+
     // Log to Family Safety Dashboard
     saveFamilySafetyEvent({
       type: "email",
@@ -2200,24 +2179,24 @@
       advice: result.risk_score >= 70
         ? "Do not click links or reply to this email."
         : result.risk_score >= 40
-        ? "Be cautious about clicking links in this email."
-        : "Email looks safe."
+          ? "Be cautious about clicking links in this email."
+          : "Email looks safe."
     });
   }
 
   function scheduleEmailScan(reason) {
-      if (reason === "manual" || reason === "navigation") {
-          setTimeout(() => performEmailScan(reason), 600);
-      } else if (window.requestIdleCallback) {
-          window.requestIdleCallback(() => performEmailScan(reason), { timeout: 1000 });
-      } else {
-          setTimeout(() => performEmailScan(reason), 600);
-      }
+    if (reason === "manual" || reason === "navigation") {
+      setTimeout(() => performEmailScan(reason), 600);
+    } else if (window.requestIdleCallback) {
+      window.requestIdleCallback(() => performEmailScan(reason), { timeout: 1000 });
+    } else {
+      setTimeout(() => performEmailScan(reason), 600);
+    }
   }
 
   function startEmailWatcher() {
     scheduleEmailScan("init");
-    
+
     // Watch DOM mutations
     const observer = new MutationObserver(() => {
       if (emailScanTimeout) clearTimeout(emailScanTimeout);
@@ -2227,12 +2206,12 @@
 
     // Watch SPA navigation (e.g. Gmail changing hash from #inbox to #inbox/1234)
     window.addEventListener("hashchange", () => {
-        lastScannedEmailFingerprint = null; // Force check
-        scheduleEmailScan("navigation");
+      lastScannedEmailFingerprint = null; // Force check
+      scheduleEmailScan("navigation");
     });
     window.addEventListener("popstate", () => {
-        lastScannedEmailFingerprint = null;
-        scheduleEmailScan("navigation");
+      lastScannedEmailFingerprint = null;
+      scheduleEmailScan("navigation");
     });
   }
 
@@ -2246,37 +2225,37 @@
 
   function isChatPage() {
     const h = window.location.hostname;
-    return h.includes("web.whatsapp.com") || 
-           h.includes("discord.com") || 
-           h.includes("messenger.com") ||
-           h.includes("instagram.com/direct");
+    return h.includes("web.whatsapp.com") ||
+      h.includes("discord.com") ||
+      h.includes("messenger.com") ||
+      h.includes("instagram.com/direct");
   }
 
   function extractChatDataFast() {
     let messages = [];
     const h = window.location.hostname;
-    
+
     if (h.includes("web.whatsapp.com")) {
-        const chatPanel = document.querySelector('#main') || document.querySelector('div[role="main"]');
-        if (chatPanel) {
-            const nodes = chatPanel.querySelectorAll('span[dir="ltr"].selectable-text, span.selectable-text');
-            if (nodes.length > 0) {
-                messages = Array.from(nodes).map(n => n.innerText);
-            } else {
-                messages = [chatPanel.innerText];
-            }
+      const chatPanel = document.querySelector('#main') || document.querySelector('div[role="main"]');
+      if (chatPanel) {
+        const nodes = chatPanel.querySelectorAll('span[dir="ltr"].selectable-text, span.selectable-text');
+        if (nodes.length > 0) {
+          messages = Array.from(nodes).map(n => n.innerText);
+        } else {
+          messages = [chatPanel.innerText];
         }
+      }
     } else if (h.includes("discord.com")) {
-        const nodes = document.querySelectorAll('li[class^="messageListItem"] div[id^="message-content"]');
-        messages = Array.from(nodes).map(n => n.innerText);
+      const nodes = document.querySelectorAll('li[class^="messageListItem"] div[id^="message-content"]');
+      messages = Array.from(nodes).map(n => n.innerText);
     } else if (h.includes("messenger.com")) {
-        const nodes = document.querySelectorAll('[dir="auto"]');
-        messages = Array.from(nodes).map(n => n.innerText);
+      const nodes = document.querySelectorAll('[dir="auto"]');
+      messages = Array.from(nodes).map(n => n.innerText);
     } else {
-        const text = extractPageText();
-        messages = [text.substring(text.length - 1000)];
+      const text = extractPageText();
+      messages = [text.substring(text.length - 1000)];
     }
-    
+
     // Return last 5 messages
     return messages.slice(-5).join("\n").trim();
   }
@@ -2287,8 +2266,8 @@
 
     let hash = 0;
     for (let i = 0; i < chatText.length; i++) {
-        hash = ((hash << 5) - hash) + chatText.charCodeAt(i);
-        hash |= 0;
+      hash = ((hash << 5) - hash) + chatText.charCodeAt(i);
+      hash |= 0;
     }
     const fingerprint = hash.toString();
 
@@ -2296,38 +2275,38 @@
     lastScannedChatFingerprint = fingerprint;
 
     const payload = {
-        message_text: chatText,
-        page_url: PAGE_URL,
-        source: "auto_chat_scan"
+      message_text: chatText,
+      page_url: PAGE_URL,
+      source: "auto_chat_scan"
     };
 
     let result = null;
     let source = "backend";
 
     try {
-        const response = await new Promise((resolve) => {
-            chrome.runtime.sendMessage({ action: "fetch-message", payload: payload }, resolve);
-        });
-        if (response && response.data && !response.error) {
-            result = response.data;
-        } else {
-            throw new Error("Backend offline");
-        }
-    } catch(err) {
-        result = fallbackScamAnalysis(chatText);
-        source = "local_fallback";
+      const response = await new Promise((resolve) => {
+        chrome.runtime.sendMessage({ action: "fetch-message", payload: payload }, resolve);
+      });
+      if (response && response.data && !response.error) {
+        result = response.data;
+      } else {
+        throw new Error("Backend offline");
+      }
+    } catch (err) {
+      result = fallbackScamAnalysis(chatText);
+      source = "local_fallback";
     }
 
     if (result.risk_score >= 40) {
-        updateEmailRiskUI(result);
-        addChatScanMessage(result, source);
+      updateEmailRiskUI(result);
+      addChatScanMessage(result, source);
     } else {
-        const glow = document.querySelector('.catphis-glow');
-        if (glow && (glow.classList.contains('danger') || glow.classList.contains('warn'))) {
-            updateEmailRiskUI(result);
-            const bubble = document.querySelector('.catphis-bubble');
-            if (bubble) bubble.style.display = "none";
-        }
+      const glow = document.querySelector('.catphis-glow');
+      if (glow && (glow.classList.contains('danger') || glow.classList.contains('warn'))) {
+        updateEmailRiskUI(result);
+        const bubble = document.querySelector('.catphis-bubble');
+        if (bubble) bubble.style.display = "none";
+      }
     }
 
     // Always log to Family Safety Dashboard
@@ -2341,22 +2320,22 @@
       advice: result.risk_score >= 70
         ? "Do not send money or click links. Verify the person through another channel."
         : result.risk_score >= 40
-        ? "Verify the person's identity before acting on this message."
-        : "Messages look safe."
+          ? "Verify the person's identity before acting on this message."
+          : "Messages look safe."
     });
   }
 
   function scheduleChatScan() {
     if (window.requestIdleCallback) {
-        window.requestIdleCallback(performChatScan, { timeout: 1000 });
+      window.requestIdleCallback(performChatScan, { timeout: 1000 });
     } else {
-        setTimeout(performChatScan, 500);
+      setTimeout(performChatScan, 500);
     }
   }
 
   function startChatWatcher() {
     scheduleChatScan();
-    
+
     const observer = new MutationObserver(() => {
       if (chatScanTimeout) clearTimeout(chatScanTimeout);
       chatScanTimeout = setTimeout(scheduleChatScan, 500);
@@ -2364,12 +2343,12 @@
     observer.observe(document.body, { childList: true, subtree: true, characterData: true });
 
     window.addEventListener("hashchange", () => {
-        lastScannedChatFingerprint = null;
-        scheduleChatScan();
+      lastScannedChatFingerprint = null;
+      scheduleChatScan();
     });
     window.addEventListener("popstate", () => {
-        lastScannedChatFingerprint = null;
-        scheduleChatScan();
+      lastScannedChatFingerprint = null;
+      scheduleChatScan();
     });
   }
 
@@ -2378,27 +2357,27 @@
     let msg = "";
 
     if (source === "local_fallback") {
-        msg += "I did a quick local scan of new messages.\n";
+      msg += "I did a quick local scan of new messages.\n";
     }
     if (result.risk_score >= 70) {
-        msg += `⚠️ Scam warning! I noticed a dangerous message in this chat: ${result.reasons.slice(0,2).join(', ')}. DO NOT send money or click links!`;
+      msg += `⚠️ Scam warning! I noticed a dangerous message in this chat: ${result.reasons.slice(0, 2).join(', ')}. DO NOT send money or click links!`;
     } else {
-        msg += `Suspicious message detected: ${result.reasons.slice(0,2).join(', ')}. Please verify the person's identity before acting.`;
+      msg += `Suspicious message detected: ${result.reasons.slice(0, 2).join(', ')}. Please verify the person's identity before acting.`;
     }
 
     if (msg !== lastChatScanMsg) {
-        lastChatScanMsg = msg;
-        window.__catphisAddMsg(msg, "bot");
+      lastChatScanMsg = msg;
+      window.__catphisAddMsg(msg, "bot");
     }
 
     const chat = document.querySelector('.catphis-chat');
     const bubble = document.querySelector('.catphis-bubble');
     if (chat && !chat.classList.contains("open") && bubble) {
-        bubble.textContent = result.risk_score >= 70 ? "⛔ Scam message detected!" : "⚠️ Suspicious message detected!";
-        bubble.style.borderColor = result.risk_score >= 70 ? "rgba(239,68,68,.6)" : "rgba(245,158,11,.5)";
-        bubble.style.display = "block";
-        setTimeout(() => { bubble.style.transition = "opacity .6s"; bubble.style.opacity = "0"; }, 6000);
-        setTimeout(() => { bubble.style.display = "none"; bubble.style.opacity = ""; }, 6700);
+      bubble.textContent = result.risk_score >= 70 ? "⛔ Scam message detected!" : "⚠️ Suspicious message detected!";
+      bubble.style.borderColor = result.risk_score >= 70 ? "rgba(239,68,68,.6)" : "rgba(245,158,11,.5)";
+      bubble.style.display = "block";
+      setTimeout(() => { bubble.style.transition = "opacity .6s"; bubble.style.opacity = "0"; }, 6000);
+      setTimeout(() => { bubble.style.display = "none"; bubble.style.opacity = ""; }, 6700);
     }
   }
 
@@ -2437,8 +2416,8 @@
           advice: result.risk_score >= 70
             ? "Do not enter passwords or payment details on this page."
             : result.risk_score >= 40
-            ? "Be cautious on this page."
-            : "Page looks safe."
+              ? "Be cautious on this page."
+              : "Page looks safe."
         });
       }
 
@@ -2451,15 +2430,15 @@
         window.__catphisPageRiskResult = result || { risk_score: 0, verdict: "Offline" };
         injectMascot(score, verdict);
       }
-      
+
       // Start Email Watcher if we are on a webmail page
       if (isWebmailPage()) {
-          startEmailWatcher();
+        startEmailWatcher();
       }
-      
+
       // Start Chat Watcher if we are on a chat page
       if (isChatPage()) {
-          startChatWatcher();
+        startChatWatcher();
       }
 
       // Check for password fields immediately
@@ -2467,16 +2446,16 @@
       if (sensitive.hasPasswordInput) {
         logFamilySafetyEvent("password_field_on_load", { risk_score: score });
         if (score >= 40) {
-            setTimeout(() => {
-                const chat = document.querySelector('.catphis-chat');
-                if (chat && !chat.classList.contains("open")) {
-                    chat.classList.add("open");
-                    const warningMsg = score >= 70 
-                        ? "🚨 I found a password field on this dangerous page! Do NOT type your password here."
-                        : "⚠️ Be careful, there's a login form here and I've flagged this page as suspicious.";
-                    window.__catphisAddMsg?.(warningMsg, "bot");
-                }
-            }, 1500);
+          setTimeout(() => {
+            const chat = document.querySelector('.catphis-chat');
+            if (chat && !chat.classList.contains("open")) {
+              chat.classList.add("open");
+              const warningMsg = score >= 70
+                ? "🚨 I found a password field on this dangerous page! Do NOT type your password here."
+                : "⚠️ Be careful, there's a login form here and I've flagged this page as suspicious.";
+              window.__catphisAddMsg?.(warningMsg, "bot");
+            }
+          }, 1500);
         }
       }
     } catch (err) {
