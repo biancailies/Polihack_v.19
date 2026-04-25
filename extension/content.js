@@ -252,6 +252,7 @@
       .catphis-glow.safe   { box-shadow: none; opacity: 0; }
       .catphis-glow.warn   { box-shadow: 0 0 24px 8px rgba(245,158,11,0.5); opacity: .8; }
       .catphis-glow.danger { box-shadow: 0 0 28px 10px rgba(239,68,68,0.6); opacity: .9; }
+      .catphis-glow.loading { box-shadow: 0 0 20px 8px rgba(167,139,250,0.6); opacity: .8; animation: catphis-pulse 1.5s infinite; }
 
       .catphis-anim-idle { animation: catphis-breathe 3.8s ease-in-out infinite; }
       @keyframes catphis-breathe {
@@ -849,6 +850,11 @@
       conversationHistory.forEach(m => addMsg(m.content, m.role === "user" ? "user" : "bot"));
       setTimeout(() => msgArea.scrollTop = msgArea.scrollHeight, 50);
     }
+    
+    // Expose for external calls (like email scans)
+    window.__catphisAddMsg = addMsg;
+    window.__catphisInjectRiskCard = injectRiskCard;
+
 
     const inputArea = document.createElement("div");
     inputArea.className = "catphis-chat-input-area";
@@ -863,9 +869,9 @@
     const quickBtnsArea = document.createElement("div");
     quickBtnsArea.className = "catphis-quick-btns";
     const quickQuestions = [
+      "Scan this email",
       "Is this safe?",
-      "Why is it suspicious?",
-      "Can I enter my password?",
+      "Why is this email risky?",
       "What should I do?"
     ];
 
@@ -925,7 +931,13 @@
       const btn = document.createElement("button");
       btn.className = "catphis-quick-btn";
       btn.textContent = q;
-      btn.onclick = () => { input.value = q; send(); };
+      btn.onclick = () => { 
+        if (q === "Scan this email") {
+            if (window.__catphisForceScanEmail) window.__catphisForceScanEmail();
+        } else {
+            input.value = q; send(); 
+        }
+      };
       quickBtnsArea.appendChild(btn);
     });
 
@@ -1133,6 +1145,366 @@
   }
 
   // ═══════════════════════════════════════════════════════════════════════
+  // EMAIL SCANNER
+  // ═══════════════════════════════════════════════════════════════════════
+  let emailScanTimeout = null;
+  let lastScannedEmailFingerprint = null;
+  let currentWebmailState = "inbox";
+  let lastEmailScanMsg = "";
+
+  function isWebmailPage() {
+    const h = window.location.hostname;
+    return h.includes("mail.google.com") || 
+           h.includes("outlook.live.com") || 
+           h.includes("mail.yahoo.com") ||
+           document.querySelector('article, [role="main"]') != null;
+  }
+
+  function findVisibleEmailContainer() {
+    // If Gmail is just showing the inbox list without an email open, abort
+    if (window.location.hostname.includes("mail.google.com")) {
+        const hash = window.location.hash.split('/')[0];
+        if (hash === "#inbox" && window.location.hash.split('/').length === 1) return null;
+    }
+
+    const selectors = [
+      '.a3s.aiL', // Gmail strict body
+      '[aria-label*="Message body"]', '[role="document"]', 'div[dir="ltr"]', // Outlook
+      '[data-test-id="message-view-body"]', '.msg-body', // Yahoo
+      'article' // Generic fallback
+    ];
+    for (const sel of selectors) {
+      const els = Array.from(document.querySelectorAll(sel));
+      const visibleEls = els.filter(el => {
+          const rect = el.getBoundingClientRect();
+          return rect.height > 20 && rect.width > 50 && rect.top < window.innerHeight && rect.bottom > 0;
+      });
+      if (visibleEls.length > 0) {
+          return visibleEls.reduce((max, el) => el.getBoundingClientRect().height > max.getBoundingClientRect().height ? el : max, visibleEls[0]);
+      }
+    }
+    return null;
+  }
+
+  function extractEmailDataFast(container) {
+    let bodyText = container.innerText || "";
+    if (bodyText.length > 4000) bodyText = bodyText.substring(0, 4000) + "...";
+
+    let subject = document.title || "";
+    let sender = "";
+    let senderEmail = "";
+
+    const gmailSubject = document.querySelector('h2.hP, .hP, [data-thread-perm-id]');
+    if (gmailSubject) subject = gmailSubject.innerText;
+    
+    const gmailSender = document.querySelector('[email], [data-hovercard-id], .gD');
+    if (gmailSender) {
+        senderEmail = gmailSender.getAttribute('email') || gmailSender.getAttribute('data-hovercard-id') || "";
+        sender = gmailSender.innerText;
+    } else {
+        const outlookSubj = document.querySelector('[role="heading"], h1, h2');
+        if (outlookSubj) subject = outlookSubj.innerText;
+        
+        const possibleEmails = document.querySelectorAll('[title*="@"], span[aria-label*="@"], a[href^="mailto:"]');
+        if (possibleEmails.length > 0) {
+            const el = possibleEmails[0];
+            senderEmail = el.getAttribute('title') || el.getAttribute('aria-label') || (el.href || "").replace('mailto:', '');
+            sender = el.innerText || senderEmail;
+        }
+    }
+
+    const links = [];
+    const aTags = Array.from(container.querySelectorAll('a'));
+    for (const a of aTags) {
+        if (links.length >= 25) break;
+        const href = a.href || "";
+        const text = (a.innerText || "").trim();
+        if (href && !href.startsWith("mailto:") && !href.startsWith("javascript:") && !href.startsWith("chrome-extension:") && !href.startsWith("about:")) {
+            if (text && text.length > 1) {
+                links.push({ href: href, text: text });
+            }
+        }
+    }
+
+    return {
+      page_url: PAGE_URL,
+      sender: sender.trim(),
+      sender_email: senderEmail.trim(),
+      subject: subject.trim(),
+      body_text: bodyText.trim(),
+      links: links
+    };
+  }
+
+  function getEmailFingerprint(emailData) {
+    const s = emailData.sender_email + "|" + emailData.subject + "|" + emailData.body_text.substring(0, 500) + "|" + emailData.links.map(l => l.href).join(',');
+    let hash = 0;
+    for (let i = 0; i < s.length; i++) {
+        hash = ((hash << 5) - hash) + s.charCodeAt(i);
+        hash |= 0;
+    }
+    return hash.toString();
+  }
+
+  async function shouldSkipEmailScan(fingerprint, emailData) {
+    if (fingerprint === lastScannedEmailFingerprint) return true;
+    const data = await new Promise(res => chrome.storage.local.get("emailCache", res));
+    const cache = data.emailCache || {};
+    if (cache[fingerprint]) {
+        lastScannedEmailFingerprint = fingerprint;
+        const result = cache[fingerprint];
+        updateEmailRiskUI(result);
+        addEmailScanMessage(result, "cache", emailData);
+        return true;
+    }
+    return false;
+  }
+
+  function saveEmailToCache(fingerprint, result) {
+    lastScannedEmailFingerprint = fingerprint;
+    chrome.storage.local.get("emailCache", data => {
+        const cache = data.emailCache || {};
+        cache[fingerprint] = result;
+        const keys = Object.keys(cache);
+        if (keys.length > 50) delete cache[keys[0]];
+        chrome.storage.local.set({ emailCache: cache });
+    });
+  }
+
+  function quickLocalEmailPrecheck(emailData) {
+    if (emailData.links.length === 0) {
+        const urgentWords = ["urgent", "verify", "suspended", "locked", "immediate", "expire", "action required"];
+        const credWords = ["password", "login", "sign in", "account", "card", "payment"];
+        const bodyL = emailData.body_text.toLowerCase();
+        if (!urgentWords.some(w => bodyL.includes(w)) && !credWords.some(w => bodyL.includes(w))) {
+            return {
+                risk_score: 0, verdict: "Safe", reasons: ["No links and no suspicious keywords found."], dangerous_links: []
+            };
+        }
+    }
+    return null;
+  }
+
+  function localEmailFallbackAnalysis(emailData) {
+    let score = 0;
+    let reasons = [];
+    let dangerous_links = [];
+
+    const urgentWords = ["urgent", "verify now", "account suspended", "locked", "immediate", "expire", "action required", "limited access", "unusual activity", "password expires", "payment failed"];
+    const credWords = ["password", "login", "sign in", "account", "card", "payment", "billing", "bank account"];
+    const suspUrls = ["login", "verify", "secure", "account", "update"];
+    const shortUrls = ["bit.ly", "tinyurl.com", "t.co", "goo.gl", "ow.ly", "rebrand.ly"];
+    const brands = ["paypal", "google", "microsoft", "apple", "facebook", "meta", "instagram", "netflix", "amazon", "dhl", "fedex", "bank"];
+
+    const subj = emailData.subject.toLowerCase();
+    const body = emailData.body_text.toLowerCase();
+    const sEmail = emailData.sender_email.toLowerCase();
+    const sName = emailData.sender.toLowerCase();
+
+    if (urgentWords.some(w => subj.includes(w) || body.includes(w))) {
+        score += 25; reasons.push("Urgent or threatening language detected");
+    }
+    if (credWords.some(w => body.includes(w))) {
+        score += 15; reasons.push("Requests credentials or sensitive information");
+    }
+    if (brands.some(b => sName.includes(b) && !sEmail.includes(b))) {
+        score += 30; reasons.push("Sender name mimics a brand but email address does not match");
+    }
+
+    emailData.links.forEach(link => {
+        const h = link.href.toLowerCase();
+        const t = link.text.toLowerCase();
+        
+        let looksLikeUrl = t.includes(".") && !t.includes(" ");
+        if (looksLikeUrl) {
+            let tDomain = t.replace('http://', '').replace('https://', '').split('/')[0];
+            let hDomain = h.replace('http://', '').replace('https://', '').split('/')[0];
+            if (tDomain && hDomain && tDomain !== hDomain) {
+                score += 40; reasons.push("Link text destination mismatch (spoofed link)"); dangerous_links.push(link.href);
+            }
+        }
+
+        let linkDomain = h.replace('http://', '').replace('https://', '').split('/')[0] || "";
+
+        if (h.startsWith("http") && linkDomain.includes("@")) {
+            score += 75; reasons.push("URL obfuscation detected (credentials in link)"); dangerous_links.push(link.href);
+        }
+        
+        brands.forEach(b => {
+            if (linkDomain.includes(b) && linkDomain !== `${b}.com`) {
+                score += 40; reasons.push("Link domain mimics a brand"); dangerous_links.push(link.href);
+            }
+        });
+
+        if (shortUrls.some(s => h.includes(s))) {
+            score += 20; reasons.push("Contains shortened URLs"); dangerous_links.push(link.href);
+        } else if (suspUrls.some(s => h.includes(s))) {
+            score += 15; reasons.push("Suspicious keywords in links"); dangerous_links.push(link.href);
+        }
+    });
+
+    reasons = [...new Set(reasons)];
+    dangerous_links = [...new Set(dangerous_links)];
+    score = Math.min(100, score);
+
+    let verdict = "Safe";
+    if (score >= 70) verdict = "Phishing";
+    else if (score >= 40) verdict = "Suspicious";
+    
+    if (reasons.length === 0) reasons.push("Email looks mostly safe");
+
+    return { risk_score: score, verdict, reasons, dangerous_links };
+  }
+
+  async function analyzeEmailWithTimeout(emailData) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 2000);
+    try {
+      const response = await fetch(`${BACKEND}/analyze-email`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(emailData),
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+      if (response.ok) return await response.json();
+    } catch (e) {
+      clearTimeout(timeoutId);
+    }
+    return null;
+  }
+
+  function updateEmailRiskUI(result, isLoading = false) {
+    const glow = document.querySelector('.catphis-glow');
+    if (!glow) return;
+    glow.className = "catphis-glow";
+    if (isLoading) {
+        glow.classList.add("loading");
+    } else {
+        if (result.risk_score >= 70) glow.classList.add("danger");
+        else if (result.risk_score >= 40) glow.classList.add("warn");
+        else glow.classList.add("safe");
+    }
+  }
+
+  function addEmailScanMessage(result, source, emailData) {
+    if (!window.__catphisAddMsg) return;
+    let msg = "";
+    
+    if (emailData && emailData.subject) {
+        msg += `[Scanning: "${emailData.subject.substring(0, 30)}..."]\n`;
+    }
+
+    if (source === "local_fallback") {
+        msg += "I did a quick local scan first. I’ll update if deeper analysis finds more.\n";
+    }
+    if (result.risk_score < 40) {
+        msg += "This email looks mostly safe. I did not find strong phishing signals, but still check links before clicking. ✅";
+    } else if (result.risk_score < 70) {
+        msg += `This email looks suspicious. I found signs like: ${result.reasons.slice(0,2).join(', ')}. Be careful before clicking links. ⚠️`;
+    } else {
+        msg += `This email looks dangerous. I found signs like: ${result.reasons.slice(0,2).join(', ')}. Do not click links or enter passwords. 🚫`;
+    }
+    
+    // Don't repeat the exact same message for the same email
+    let shouldAddChatMsg = (msg !== lastEmailScanMsg);
+    
+    if (shouldAddChatMsg) {
+        lastEmailScanMsg = msg;
+        window.__catphisAddMsg(msg, "bot");
+    }
+    
+    const chat = document.querySelector('.catphis-chat');
+    const bubble = document.querySelector('.catphis-bubble');
+    if (chat && !chat.classList.contains("open") && bubble) {
+        bubble.textContent = result.risk_score >= 70 ? "⛔ Dangerous email detected!" : "⚠️ Suspicious email detected!";
+        if (result.risk_score < 40) bubble.textContent = "✅ Email scanned: Looks safe.";
+        bubble.style.borderColor = result.risk_score >= 70 ? "rgba(239,68,68,.6)" : (result.risk_score >= 40 ? "rgba(245,158,11,.5)" : "rgba(16,185,129,.5)");
+        bubble.style.display = "block";
+        setTimeout(() => { bubble.style.transition = "opacity .6s"; bubble.style.opacity = "0"; }, 6000);
+        setTimeout(() => { bubble.style.display = "none"; bubble.style.opacity = ""; }, 6700);
+    }
+  }
+  
+  window.__catphisForceScanEmail = () => {
+      lastScannedEmailFingerprint = null;
+      scheduleEmailScan("manual");
+  };
+
+  async function performEmailScan(reason) {
+    const container = findVisibleEmailContainer();
+    if (!container) {
+        if (currentWebmailState === "email") {
+            // We just left an email and went back to inbox. Reset UI.
+            currentWebmailState = "inbox";
+            lastScannedEmailFingerprint = null;
+            if (window.__catphisPageRiskResult) {
+                updateEmailRiskUI(window.__catphisPageRiskResult);
+            }
+        }
+        if (reason === "manual" && window.__catphisAddMsg) window.__catphisAddMsg("I couldn't find an open email to scan. Please open one first!", "bot");
+        return;
+    }
+
+    currentWebmailState = "email";
+    const emailData = extractEmailDataFast(container);
+    if ((!emailData.body_text || emailData.body_text.length < 10) && emailData.links.length === 0) return;
+
+    const fingerprint = getEmailFingerprint(emailData);
+    if (reason !== "manual" && await shouldSkipEmailScan(fingerprint, emailData)) return;
+
+    if (reason === "manual" && window.__catphisAddMsg) window.__catphisAddMsg("Scanning email...", "bot");
+    updateEmailRiskUI(null, true);
+
+    let result = quickLocalEmailPrecheck(emailData);
+    let source = "local_precheck";
+
+    if (!result) {
+        result = await analyzeEmailWithTimeout(emailData);
+        source = "backend";
+        if (!result) {
+            result = localEmailFallbackAnalysis(emailData);
+            source = "local_fallback";
+        }
+    }
+
+    saveEmailToCache(fingerprint, result);
+    updateEmailRiskUI(result);
+    addEmailScanMessage(result, source, emailData);
+  }
+
+  function scheduleEmailScan(reason) {
+      if (reason === "manual" || reason === "navigation") {
+          setTimeout(() => performEmailScan(reason), 50);
+      } else if (window.requestIdleCallback) {
+          window.requestIdleCallback(() => performEmailScan(reason), { timeout: 500 });
+      } else {
+          setTimeout(() => performEmailScan(reason), 200);
+      }
+  }
+
+  function startEmailWatcher() {
+    scheduleEmailScan("init");
+    
+    // Watch DOM mutations
+    const observer = new MutationObserver(() => {
+      if (emailScanTimeout) clearTimeout(emailScanTimeout);
+      emailScanTimeout = setTimeout(() => scheduleEmailScan("mutation"), 300);
+    });
+    observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+
+    // Watch SPA navigation (e.g. Gmail changing hash from #inbox to #inbox/1234)
+    window.addEventListener("hashchange", () => {
+        lastScannedEmailFingerprint = null; // Force check
+        scheduleEmailScan("navigation");
+    });
+    window.addEventListener("popstate", () => {
+        lastScannedEmailFingerprint = null;
+        scheduleEmailScan("navigation");
+    });
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
   // MAIN
   // ═══════════════════════════════════════════════════════════════════════
 
@@ -1159,8 +1531,15 @@
         root.remove();
         window.__catphisRan = false;
         window.__catphisRan = true;
+        window.__catphisPageRiskResult = result;
         injectMascot(result.risk_score, result.verdict);
       }
+      
+      // Start Email Watcher if we are on a webmail page
+      if (isWebmailPage()) {
+          startEmailWatcher();
+      }
+
     } catch (err) {
       console.error("[CatPhis] Error:", err);
     }
