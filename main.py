@@ -1,6 +1,17 @@
+import os
+import json
+import urllib.request
 import pickle
 import pandas as pd
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+
+try:
+    import openai
+except ImportError:
+    openai = None
+
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -41,6 +52,33 @@ class AnalysisResponse(BaseModel):
     risk_score: int
     verdict: str
     reasons: list[str]
+
+class ChatMessage(BaseModel):
+    role: str
+    content: str
+
+class AnalysisData(BaseModel):
+    risk_score: int
+    verdict: str
+    reasons: list[str] = []
+
+class PageContextData(BaseModel):
+    url: str
+    hostname: str = ""
+    title: str = ""
+    page_text_sample: str = ""
+    hasPasswordForm: bool = False
+    formActions: list[str] = []
+
+class ChatRequest(BaseModel):
+    message: str
+    conversation_history: list[ChatMessage] = []
+    analysis: AnalysisData
+    page_context: PageContextData
+
+class ChatResponse(BaseModel):
+    reply: str
+
 
 
 # ── Helper: extract ML features ───────────────────────────────────────────────
@@ -133,6 +171,95 @@ def analyze(request: URLRequest):
 @app.post("/analyze-url", response_model=AnalysisResponse)
 def analyze_url(request: URLRequest):
     return analyze(request)
+
+# ── POST /chat ────────────────────────────────────────────────────────────────
+def build_system_prompt() -> str:
+    return (
+        "You are CatPhish, a friendly, cute, clear, and highly useful cybersecurity assistant. "
+        "Your role is to evaluate websites for phishing risks and guide the user securely.\n\n"
+        "Rules:\n"
+        "1. Never say a site is 100% safe. There is always a risk online.\n"
+        "2. Keep answers short but highly useful.\n"
+        "3. Use a friendly, cute tone occasionally (meow, purr, paws).\n"
+        "4. If a site is suspicious or phishing, clearly warn the user:\n"
+        "   - Do NOT enter passwords.\n"
+        "   - Do NOT enter card details.\n"
+        "   - Do NOT download files.\n"
+        "   - Advise them to manually type the official website URL in their browser instead of clicking links.\n"
+        "5. If the user asks broad cybersecurity questions, answer them.\n"
+        "6. If the user asks about the current page, answer using the provided analysis and page context.\n"
+        "7. If the user asks unrelated questions, gently redirect to website safety and phishing help."
+    )
+
+def build_llm_messages(request: ChatRequest) -> list:
+    messages = [{"role": "system", "content": build_system_prompt()}]
+    
+    # Add conversation history
+    for msg in request.conversation_history:
+        # Only allow 'user' and 'assistant' roles for safety
+        if msg.role in ["user", "assistant"]:
+            messages.append({"role": msg.role, "content": msg.content})
+    
+    # Build the final user message with context
+    user_context = (
+        f"--- CURRENT PAGE CONTEXT ---\n"
+        f"URL: {request.page_context.url}\n"
+        f"Hostname: {request.page_context.hostname}\n"
+        f"Title: {request.page_context.title}\n"
+        f"Has Password Form: {request.page_context.hasPasswordForm}\n"
+        f"Form Actions: {request.page_context.formActions}\n"
+        f"Page Text Sample: {request.page_context.page_text_sample[:500]}\n"
+        f"\n--- AI ANALYSIS ---\n"
+        f"Risk Score: {request.analysis.risk_score}/100\n"
+        f"Verdict: {request.analysis.verdict}\n"
+        f"Reasons: {', '.join(request.analysis.reasons)}\n"
+        f"\n--- USER MESSAGE ---\n"
+        f"{request.message}"
+    )
+    
+    messages.append({"role": "user", "content": user_context})
+    return messages
+
+def fallback_chat_response(request: ChatRequest) -> str:
+    msg_lower = request.message.lower()
+    is_suspicious = request.analysis.risk_score >= 40 or request.analysis.verdict.lower() in ["suspicious", "likely phishing", "phishing"]
+    
+    if "password" in msg_lower or "login" in msg_lower or request.page_context.hasPasswordForm:
+        if is_suspicious:
+            return "Meow! This page looks highly dangerous. Please do NOT enter your passwords or card details, and do not download anything. It's safest to manually type the official URL in your browser."
+        else:
+            return "Purr... Even though this page doesn't look highly suspicious right now, I can never guarantee it's 100% safe. Always be careful before typing your password!"
+    else:
+        if is_suspicious:
+            return "Paws! This page has some risky signs. Be very careful, don't share any personal info, and manually type the official website URL if you need to access it."
+        else:
+            return "Meow! This page seems okay at a glance, but remember, no page is 100% safe. Stay alert!"
+
+@app.post("/chat", response_model=ChatResponse)
+def chat(request: ChatRequest):
+    api_key = os.environ.get("OPENAI_API_KEY")
+    
+    if api_key and openai:
+        try:
+            client = openai.OpenAI(api_key=api_key)
+            messages = build_llm_messages(request)
+            
+            response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=messages,
+                max_tokens=250,
+                temperature=0.7
+            )
+            reply = response.choices[0].message.content
+            return ChatResponse(reply=reply.strip())
+        except Exception as e:
+            print(f"OpenAI API error: {e}")
+            # Fallback to rule-based if API fails
+            pass
+
+    # Rule-based fallback
+    reply = fallback_chat_response(request)
+    return ChatResponse(reply=reply)
 
 # ── GET / (health check) ──────────────────────────────────────────────────────
 @app.get("/")

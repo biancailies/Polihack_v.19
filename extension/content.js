@@ -222,7 +222,7 @@
         transition: filter .4s ease;
       }
       .catphis-cat-wrap:hover {
-        filter: drop-shadow(0 0 14px rgba(167,139,250,.5));
+        filter: drop-shadow(0 8px 16px rgba(0,0,0,0.25));
       }
       .catphis-cat-wrap:active { cursor: grabbing; }
 
@@ -235,15 +235,15 @@
 
       .catphis-glow {
         position: absolute;
-        inset: 15px 10px;
+        inset: 20px 15px;
         border-radius: 50%;
         opacity: 0;
         pointer-events: none;
         transition: opacity .6s, box-shadow .6s;
       }
-      .catphis-glow.safe   { box-shadow: 0 0 28px 12px #22c55e; opacity: .55; }
-      .catphis-glow.warn   { box-shadow: 0 0 28px 12px #f59e0b; opacity: .6; }
-      .catphis-glow.danger { box-shadow: 0 0 32px 14px #ef4444; opacity: .85; }
+      .catphis-glow.safe   { box-shadow: none; opacity: 0; }
+      .catphis-glow.warn   { box-shadow: 0 0 24px 8px rgba(245,158,11,0.5); opacity: .8; }
+      .catphis-glow.danger { box-shadow: 0 0 28px 10px rgba(239,68,68,0.6); opacity: .9; }
 
       /* idle breathing */
       .catphis-anim-idle { animation: catphis-breathe 3.8s ease-in-out infinite; }
@@ -261,12 +261,12 @@
         pointer-events: none;
         background: linear-gradient(135deg, #1e1b2e, #12101f);
         border: 1px solid rgba(167,139,250,.35);
-        border-radius: 14px 14px 4px 14px;
-        padding: 9px 14px;
-        max-width: 230px;
+        border-radius: 8px 8px 2px 8px;
+        padding: 12px 16px;
+        max-width: 240px;
         font-size: 13px;
         color: #ddd6fe;
-        line-height: 1.45;
+        line-height: 1.5;
         box-shadow: 0 6px 24px rgba(0,0,0,.6);
         position: relative;
       }
@@ -277,85 +277,216 @@
 
       .catphis-chat {
         pointer-events: all;
-        width: 320px;
-        background: linear-gradient(160deg, #110e1c 0%, #0a0814 100%);
-        border: 1px solid rgba(139,92,246,.3);
-        border-radius: 18px;
-        box-shadow: 0 16px 48px rgba(0,0,0,.8);
+        width: 360px;
+        background: rgba(18, 14, 28, 0.95);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(139, 92, 246, 0.4);
+        border-radius: 16px;
+        box-shadow: 0 16px 48px rgba(0,0,0,0.8), 0 0 20px rgba(139, 92, 246, 0.15);
         overflow: hidden;
         display: none;
         flex-direction: column;
-        max-height: 460px;
+        max-height: 560px;
       }
       .catphis-chat.open { display:flex; animation: catphis-pop-in .3s cubic-bezier(.4,0,.2,1) both; }
 
       .catphis-chat-header {
-        background: linear-gradient(90deg, #4c1d95, #7c3aed);
-        padding: 12px 15px; display:flex; align-items:center; gap:9px;
+        background: linear-gradient(135deg, #4c1d95, #6d28d9);
+        padding: 16px 18px; display:flex; align-items:center; gap:12px;
+        border-bottom: 1px solid rgba(255,255,255,0.1);
       }
-      .catphis-chat-header-title { flex:1; font-size:14px; font-weight:700; color:#fff; }
-      .catphis-chat-header-close {
-        all:unset; cursor:pointer; font-size:16px; color:rgba(255,255,255,.6);
-        padding:2px 6px; border-radius:5px; transition:color .15s, background .15s;
+      .catphis-chat-header-info { flex:1; display:flex; flex-direction:column; }
+      .catphis-chat-header-title { font-size:15px; font-weight:700; color:#fff; display:flex; align-items:center; gap:6px; }
+      .catphis-chat-header-subtitle { font-size:11px; color:#c4b5fd; margin-top:2px; font-weight:500; }
+      
+      .catphis-chat-header-clear, .catphis-chat-header-close {
+        cursor:pointer; font-size:14px; color:rgba(255,255,255,.8);
+        width: 28px; height: 28px; border:none; background:rgba(255,255,255,0.1);
+        border-radius:8px; display: flex; align-items: center; justify-content: center;
+        transition:color .2s, background .2s, transform .2s;
       }
-      .catphis-chat-header-close:hover { color:#fff; background:rgba(255,255,255,.12); }
+      .catphis-chat-header-clear:hover, .catphis-chat-header-close:hover { 
+        color:#fff; background:rgba(255,255,255,.2); transform:scale(1.05); 
+      }
 
       .catphis-chat-messages {
-        flex:1; overflow-y:auto; padding:12px; display:flex; flex-direction:column;
-        gap:8px; min-height:180px; max-height:260px; scrollbar-width:thin;
-        scrollbar-color: rgba(139,92,246,.3) transparent;
+        flex:1; overflow-y:auto; padding:16px; display:flex; flex-direction:column;
+        gap:12px; min-height:250px; max-height:350px; scrollbar-width:thin;
+        scrollbar-color: rgba(139,92,246,.4) transparent;
       }
+      .catphis-chat-messages::-webkit-scrollbar { width: 6px; }
+      .catphis-chat-messages::-webkit-scrollbar-thumb { background: rgba(139,92,246,.4); border-radius: 3px; }
+      
       .catphis-msg {
-        max-width:85%; padding:9px 13px; border-radius:12px; font-size:13px; line-height:1.5;
-        animation: catphis-pop-in .2s ease both;
+        max-width:85%; padding:12px 16px; border-radius:12px; font-size:14px; line-height:1.5;
+        animation: catphis-pop-in .2s ease both; box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        word-wrap: break-word;
       }
-      .catphis-msg.bot  { align-self:flex-start; background:rgba(139,92,246,.16); border:1px solid rgba(139,92,246,.25); color:#e9d5ff; border-radius:4px 12px 12px 12px; }
-      .catphis-msg.user { align-self:flex-end; background:linear-gradient(135deg,#5b21b6,#7c3aed); color:#fff; border-radius:12px 4px 12px 12px; }
-      .catphis-msg.typing { align-self:flex-start; font-style:italic; color:#a78bfa; background:none; font-size:12px; }
+      .catphis-msg.bot  { align-self:flex-start; background:rgba(109,40,217,.2); border:1px solid rgba(139,92,246,.3); color:#e9d5ff; border-radius:4px 16px 16px 16px; }
+      .catphis-msg.user { align-self:flex-end; background:linear-gradient(135deg,#6d28d9,#8b5cf6); color:#fff; border-radius:16px 4px 16px 16px; border:1px solid rgba(255,255,255,0.1); }
+      .catphis-msg.typing { align-self:flex-start; font-style:italic; color:#a78bfa; background:none; font-size:13px; box-shadow:none; border:none; padding:8px 12px; }
 
-      .catphis-chat-input-area { display:flex; gap:8px; padding:10px 12px; border-top:1px solid rgba(139,92,246,.15); }
+      .catphis-chat-input-area { display:flex; gap:10px; padding:16px; border-top:1px solid rgba(139,92,246,.2); background: rgba(0,0,0,0.2); }
       .catphis-chat-input {
-        all:unset; flex:1; background:rgba(0,0,0,.25); border:1px solid rgba(139,92,246,.3);
-        border-radius:10px; padding:9px 13px; color:#e9d5ff; font-size:13px;
-        transition:border-color .2s;
+        flex:1; background:rgba(0,0,0,.3); border:1px solid rgba(139,92,246,.4);
+        border-radius:12px; padding:12px 16px; color:#fff; font-size:14px;
+        transition:border-color .2s, box-shadow .2s; outline:none; font-family:inherit; min-width:0;
       }
-      .catphis-chat-input:focus { border-color:#a78bfa; }
+      .catphis-chat-input::placeholder { color: #a78bfa; opacity: 0.6; }
+      .catphis-chat-input:focus { border-color:#8b5cf6; box-shadow: 0 0 0 2px rgba(139,92,246,.2); }
+      .catphis-chat-input:disabled { opacity: 0.6; cursor: not-allowed; }
+      
       .catphis-send-btn {
-        all:unset; cursor:pointer; background:linear-gradient(135deg,#5b21b6,#7c3aed);
-        color:#fff; border-radius:10px; padding:0 16px; font-weight:600; font-size:13px;
-        transition:opacity .15s, transform .15s;
+        cursor:pointer; background:linear-gradient(135deg,#6d28d9,#8b5cf6);
+        color:#fff; border-radius:12px; padding:0 20px; font-weight:600; font-size:14px;
+        transition:opacity .2s, transform .1s, box-shadow .2s; border:none; outline:none; font-family:inherit;
+        display: flex; align-items: center; justify-content: center;
+        box-shadow: 0 4px 12px rgba(109,40,217,0.4);
       }
-      .catphis-send-btn:hover { opacity:.85; }
-      .catphis-send-btn:active { transform:scale(.93); }
+      .catphis-send-btn:hover { opacity:.9; box-shadow: 0 6px 16px rgba(109,40,217,0.6); transform:translateY(-1px); }
+      .catphis-send-btn:active { transform:translateY(1px); box-shadow: 0 2px 8px rgba(109,40,217,0.4); }
+      .catphis-send-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+
+      .catphis-quick-btns {
+        display: flex; gap: 8px; padding: 0 16px 12px; flex-wrap: wrap;
+        border-top: 1px solid rgba(139,92,246,.1); background: rgba(0,0,0,0.1); padding-top:12px;
+      }
+      .catphis-quick-btn {
+        background: rgba(139,92,246,.15);
+        border: 1px solid rgba(139,92,246,.3);
+        color: #e9d5ff; border-radius: 14px; padding: 6px 12px;
+        font-size: 12px; cursor: pointer; transition: all .2s;
+        font-family: inherit; font-weight: 500;
+      }
+      .catphis-quick-btn:hover { background: rgba(139,92,246,.4); color: #fff; transform:translateY(-1px); }
     `;
     document.head.appendChild(style);
   }
 
   // ═══════════════════════════════════════════════════════════════════════
-  // BOT RESPONSES
+  // BOT RESPONSES & HISTORY
   // ═══════════════════════════════════════════════════════════════════════
 
-  function getBotResponse(msg, riskScore) {
+  let conversationHistory = [];
+  
+  async function loadHistory() {
+    return new Promise(res => {
+        chrome.storage.local.get("chatHistory", (data) => {
+            const h = data.chatHistory || {};
+            if (h.url === PAGE_URL && Array.isArray(h.messages)) {
+                conversationHistory = h.messages;
+            } else {
+                conversationHistory = [];
+            }
+            res();
+        });
+    });
+  }
+  
+  function saveHistory() {
+    if (conversationHistory.length > 10) {
+        conversationHistory = conversationHistory.slice(-10);
+    }
+    chrome.storage.local.set({
+        chatHistory: { url: PAGE_URL, messages: conversationHistory }
+    });
+  }
+
+  async function fetchChatResponse(msg, riskScore) {
+    try {
+      let analysisResult = null;
+      const data = await new Promise(res => chrome.storage.local.get("lastDomAnalysis", res));
+      if (data && data.lastDomAnalysis && data.lastDomAnalysis.url === PAGE_URL) {
+        analysisResult = data.lastDomAnalysis;
+      }
+
+      if (!analysisResult) {
+        const payload = {
+          url: PAGE_URL,
+          page_title: document.title || "",
+          page_text: extractPageText(),
+          forms: extractForms(),
+        };
+        const analyzeRes = await fetch(`${BACKEND}/analyze`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+        if (analyzeRes.ok) {
+            analysisResult = await analyzeRes.json();
+            saveResult(analysisResult, true);
+        } else {
+            analysisResult = { risk_score: riskScore || 0, verdict: "Unknown", reasons: [] };
+        }
+      }
+
+      const forms = extractForms();
+      const hasPasswordForm = forms.some(f => f.hasPassword);
+      const formActions = forms.map(f => f.action).filter(Boolean);
+
+      const pageContext = {
+        url: PAGE_URL,
+        hostname: window.location.hostname,
+        title: document.title || "",
+        page_text_sample: extractPageText(),
+        hasPasswordForm: hasPasswordForm,
+        formActions: formActions
+      };
+
+      const chatPayload = {
+        message: msg,
+        conversation_history: conversationHistory.slice(0, -1),
+        analysis: {
+          risk_score: analysisResult.risk_score || 0,
+          verdict: analysisResult.verdict || "Unknown",
+          reasons: analysisResult.reasons || []
+        },
+        page_context: pageContext
+      };
+
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 10000);
+      const response = await fetch(`${BACKEND}/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(chatPayload),
+        signal: controller.signal
+      });
+      clearTimeout(timer);
+
+      if (response.ok) {
+        const json = await response.json();
+        if (json && json.reply) return json.reply;
+      }
+      throw new Error("Backend chat failed");
+    } catch (err) {
+      console.error("[CatPhis] Chat backend error:", err);
+      return getLocalBotResponse(msg, riskScore);
+    }
+  }
+
+  function getLocalBotResponse(msg, riskScore) {
     const m = msg.toLowerCase().trim();
     if (m.includes("safe") || m.includes("sigur"))
-      return riskScore < 40 ? "Looks safe to me 😺 No suspicious signals here." : "Score is " + riskScore + "/100 — be careful! 🐾";
-    if (m.includes("phishing") || m.includes("pericol"))
+      return (riskScore || 0) < 40 ? "Looks safe to me 😺 No suspicious signals here." : "Score is " + (riskScore || 0) + "/100 — be careful! 🐾";
+    if (m.includes("phishing") || m.includes("pericol") || m.includes("suspicious"))
       return "That smells like phishing 🐟 Don't enter passwords on this page!";
     if (m.includes("score") || m.includes("scor") || m.includes("risc") || m.includes("risk"))
       return riskScore != null
         ? `Risk score: ${riskScore}/100. ${riskScore >= 70 ? "⛔ Dangerous!" : riskScore >= 40 ? "⚠️ Be cautious." : "✅ Looks clean."}`
         : "Still analyzing... ask me again in a moment!";
-    if (m.includes("help") || m.includes("ajutor"))
-      return "Ask me: 'is this safe?', 'risk score', 'phishing'. I'm always watching 👀";
+    if (m.includes("help") || m.includes("ajutor") || m.includes("what should i do"))
+      return "Ask me: 'is this site safe?', 'why is it suspicious?', or 'can I enter my password?'. I'm always watching 👀";
     if (m.includes("hello") || m.includes("salut") || m.includes("hi"))
-      return "Meow! 🐾 I'm CatPhis, your security guardian. How can I help?";
+      return "Meow! 🐾 I'm CatPhish, your security guardian. How can I help?";
     if (m.includes("password") || m.includes("parola"))
       return "⚠️ Never enter your password on suspicious pages! Check the score first.";
     const defaults = [
       "I'm watching this page for you... 👀",
       "Meow. Let me sniff around 🐈‍⬛",
-      "Always scanning for threats 🛡️ Ask me the risk score!",
-      "Try: 'is this safe?' or 'what's my risk score?'",
+      "Always scanning for threats 🛡️ Ask me if this is safe!",
+      "Try: 'is this site safe?' or 'why is it suspicious?'",
     ];
     return defaults[Math.floor(Math.random() * defaults.length)];
   }
@@ -396,12 +527,40 @@
 
     const header = document.createElement("div");
     header.className = "catphis-chat-header";
-    header.innerHTML = `<span class="catphis-chat-header-title">CatPhis Assistant 🐾</span>`;
+    
+    const infoArea = document.createElement("div");
+    infoArea.className = "catphis-chat-header-info";
+    infoArea.innerHTML = `
+      <div class="catphis-chat-header-title">
+        <span>CatPhish Assistant</span>
+        <span style="font-size:16px;">🐾</span>
+      </div>
+      <div class="catphis-chat-header-subtitle">Your anti-phishing buddy</div>
+    `;
+    
+    const actionsArea = document.createElement("div");
+    actionsArea.style.display = "flex";
+    actionsArea.style.gap = "8px";
+    
+    const clearBtn = document.createElement("button");
+    clearBtn.className = "catphis-chat-header-clear";
+    clearBtn.textContent = "🔄";
+    clearBtn.title = "New Chat";
+    clearBtn.onclick = (e) => {
+      e.stopPropagation();
+      conversationHistory = [];
+      saveHistory();
+      msgArea.innerHTML = "";
+      addMsg("Meow! 🐈‍⬛ I'm CatPhish. Ask me about this page's safety!", "bot");
+    };
+
     const closeBtn = document.createElement("button");
     closeBtn.className = "catphis-chat-header-close";
-    closeBtn.textContent = "✕";
+    closeBtn.innerHTML = "✕";
     closeBtn.onclick = (e) => { e.stopPropagation(); chat.classList.remove("open"); };
-    header.appendChild(closeBtn);
+    
+    actionsArea.append(clearBtn, closeBtn);
+    header.append(infoArea, actionsArea);
 
     const msgArea = document.createElement("div");
     msgArea.className = "catphis-chat-messages";
@@ -413,7 +572,13 @@
       msgArea.appendChild(el);
       msgArea.scrollTop = msgArea.scrollHeight;
     }
-    addMsg("Meow! 🐈‍⬛ I'm CatPhis. Ask me about this page's safety!", "bot");
+    
+    if (conversationHistory.length === 0) {
+      addMsg("Meow! 🐈‍⬛ I'm CatPhish. Ask me about this page's safety!", "bot");
+    } else {
+      conversationHistory.forEach(m => addMsg(m.content, m.role === "user" ? "user" : "bot"));
+      setTimeout(() => msgArea.scrollTop = msgArea.scrollHeight, 50);
+    }
 
     const inputArea = document.createElement("div");
     inputArea.className = "catphis-chat-input-area";
@@ -424,22 +589,61 @@
     sendBtn.className = "catphis-send-btn";
     sendBtn.textContent = "Send";
 
-    function send() {
+    const quickBtnsArea = document.createElement("div");
+    quickBtnsArea.className = "catphis-quick-btns";
+    const quickQuestions = [
+      "Is this website safe?",
+      "Why is this website suspicious?",
+      "Can I enter my password here?",
+      "What should I do now?"
+    ];
+
+    async function send() {
       const text = input.value.trim();
       if (!text) return;
       addMsg(text, "user");
       input.value = "";
+      sendBtn.disabled = true;
+      input.disabled = true;
+
+      conversationHistory.push({ role: "user", content: text });
+      saveHistory();
+
       const t = document.createElement("div");
       t.className = "catphis-msg typing";
-      t.textContent = "typing...";
+      t.textContent = "CatPhish is thinking...";
       msgArea.appendChild(t);
-      setTimeout(() => { t.remove(); addMsg(getBotResponse(text, riskScore), "bot"); }, 650 + Math.random() * 350);
+      msgArea.scrollTop = msgArea.scrollHeight;
+
+      const reply = await fetchChatResponse(text, riskScore);
+      
+      t.remove();
+      addMsg(reply, "bot");
+      
+      conversationHistory.push({ role: "assistant", content: reply });
+      saveHistory();
+
+      sendBtn.disabled = false;
+      input.disabled = false;
+      input.focus();
     }
+
+    quickQuestions.forEach(q => {
+      const btn = document.createElement("button");
+      btn.className = "catphis-quick-btn";
+      btn.textContent = q;
+      btn.onclick = () => {
+        input.value = q;
+        send();
+      };
+      quickBtnsArea.appendChild(btn);
+    });
+
     sendBtn.onclick = send;
     input.onkeydown = (e) => { if (e.key === "Enter") send(); };
 
     inputArea.append(input, sendBtn);
-    chat.append(header, msgArea, inputArea);
+    chat.append(header, msgArea, quickBtnsArea, inputArea);
 
     // ── Cat wrap
     const catWrap = document.createElement("div");
@@ -608,6 +812,7 @@
   // ═══════════════════════════════════════════════════════════════════════
 
   async function run() {
+    await loadHistory();
     const payload = {
       url: PAGE_URL,
       page_title: document.title || "",
