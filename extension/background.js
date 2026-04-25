@@ -192,3 +192,64 @@ chrome.webNavigation.onBeforeNavigate.addListener(async (details) => {
     console.error("[PhishFox] Unexpected error in onBeforeNavigate:", err);
   }
 });
+
+// ── Message listener for bypassing CSP in content scripts ───────────────────
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === "fetch-shopping") {
+    fetch(`${BACKEND}/analyze-shopping`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(request.payload)
+    })
+    .then(res => {
+      if (!res.ok) {
+        res.text().then(text => sendResponse({ error: true, status: res.status, text: text }));
+      } else {
+        res.json().then(data => sendResponse({ error: false, data: data }));
+      }
+    })
+    .catch(err => {
+      sendResponse({ error: true, status: 0, text: err.message });
+    });
+    return true; // Keep message channel open for async response
+  }
+
+  if (request.action === "fetch-message") {
+    fetch(`${BACKEND}/analyze-message`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(request.payload)
+    })
+    .then(res => {
+      if (!res.ok) {
+        res.text().then(text => sendResponse({ error: true, status: res.status, text: text }));
+      } else {
+        res.json().then(data => sendResponse({ error: false, data: data }));
+      }
+    })
+    .catch(err => {
+      sendResponse({ error: true, status: 0, text: err.message });
+    });
+    return true;
+  }
+
+  if (request.action === "fetch-email") {
+    fetch(`${BACKEND}/analyze-email`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(request.payload)
+    })
+    .then(res => {
+      if (!res.ok) {
+        res.text().then(text => sendResponse({ error: true, status: res.status, text: text }));
+      } else {
+        res.json().then(data => sendResponse({ error: false, data: data }));
+      }
+    })
+    .catch(err => {
+      sendResponse({ error: true, status: 0, text: err.message });
+    });
+    return true;
+  }
+});
+

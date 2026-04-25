@@ -37,8 +37,8 @@
       const inputs = Array.from(form.querySelectorAll("input"));
       const inputTypes = inputs.map((el) => (el.type || "text").toLowerCase());
       forms.push({
-        action: form.action || "",
-        method: (form.method || "get").toLowerCase(),
+        action: form.getAttribute("action") || "",
+        method: (form.getAttribute("method") || "get").toLowerCase(),
         hasPassword: inputTypes.includes("password"),
         inputTypes,
       });
@@ -978,8 +978,13 @@
       let source = "selected_text";
 
       if (!msgText) {
-        msgText = extractPageText();
-        source = "visible_page";
+        if (typeof isChatPage === "function" && isChatPage()) {
+            msgText = extractChatDataFast();
+            source = "auto_chat_scan";
+        } else {
+            msgText = extractPageText();
+            source = "visible_page";
+        }
       }
 
       if (!msgText || msgText.length < 10) {
@@ -995,24 +1000,24 @@
       }
 
       try {
-        const analyzeRes = await fetch(`${BACKEND}/analyze-message`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                message_text: msgText,
-                page_url: PAGE_URL,
-                source: source
-            })
+        const payload = {
+            message_text: msgText,
+            page_url: PAGE_URL,
+            source: source
+        };
+        
+        const response = await new Promise((resolve) => {
+            chrome.runtime.sendMessage({ action: "fetch-message", payload: payload }, (res) => {
+                if (chrome.runtime.lastError) resolve({ error: true, text: chrome.runtime.lastError.message, status: 0 });
+                else resolve(res);
+            });
         });
         
-        let result = null;
-        if (analyzeRes.ok) {
-            result = await analyzeRes.json();
-        } else {
-            throw new Error("Backend offline");
+        if (response.error || !response.data) {
+            throw new Error(response.text || "Backend offline");
         }
         
-        handleScamResult(result);
+        handleScamResult(response.data);
       } catch (err) {
         // Fallback analysis
         const result = fallbackScamAnalysis(msgText);
@@ -1068,8 +1073,139 @@
         saveHistory();
     }
 
+    // ── Fake Shopping Site Detection ──
+    function isShoppingPage() {
+        const txt = (document.body.innerText || "").toLowerCase();
+        const url = window.location.href.toLowerCase();
+        
+        if (url.includes("checkout") || url.includes("cart") || url.includes("shop") || url.includes("store")) return true;
+        
+        let score = 0;
+        if (txt.includes("add to cart") || txt.includes("add to bag")) score++;
+        if (txt.includes("buy now") || txt.includes("checkout")) score++;
+        if (txt.includes("price:") || txt.includes("sale")) score++;
+        if (txt.match(/\$\d+(\.\d{2})?|€\d+(\.\d{2})?|£\d+(\.\d{2})?/)) score++;
+        
+        return score >= 2;
+    }
+
+    function extractShoppingData() {
+        const txt = (document.body.innerText || "").toLowerCase();
+        const priceMatches = txt.match(/\$\d+(\.\d{2})?|€\d+(\.\d{2})?|£\d+(\.\d{2})?/g) || [];
+        const paymentWords = ["crypto", "bitcoin", "ethereum", "gift card", "wire transfer", "western union", "bank transfer", "paypal", "credit card", "visa", "mastercard"];
+        const foundPayments = paymentWords.filter(w => txt.includes(w));
+        
+        const links = Array.from(document.querySelectorAll("a")).map(a => ({
+            text: a.innerText.trim(),
+            href: a.href || ""
+        })).filter(l => l.href && l.href.startsWith("http")).slice(0, 100);
+
+        
+        return {
+            url: window.location.href,
+            hostname: window.location.hostname,
+            title: document.title,
+            body_text: extractPageText(),
+            links: links,
+            forms: extractForms(),
+            detected_prices: [...new Set(priceMatches)].slice(0, 5),
+            detected_payment_words: foundPayments
+        };
+    }
+
+    async function checkShoppingSite() {
+        shopBtn.disabled = true;
+        shopBtn.textContent = "Scanning shop...";
+
+        try {
+            const shopData = extractShoppingData();
+            
+            const response = await new Promise((resolve) => {
+                chrome.runtime.sendMessage({ action: "fetch-shopping", payload: shopData }, (res) => {
+                    if (chrome.runtime.lastError) resolve({ error: true, text: chrome.runtime.lastError.message, status: 0 });
+                    else resolve(res);
+                });
+            });
+            
+            if (response.error) {
+                if (response.status === 0) {
+                    showToast("⚠️ Network Error (Backend offline or blocked)", "rgba(245,158,11,.9)");
+                } else {
+                    showToast(`⚠️ Server Error ${response.status}: ` + (response.text || "").substring(0, 100), "rgba(239,68,68,.9)");
+                }
+            } else if (response.data) {
+                handleShoppingResult(response.data);
+            }
+        } catch (err) {
+            showToast("⚠️ JS Error: " + err.message, "rgba(245,158,11,.9)");
+        }
+
+        shopBtn.disabled = false;
+        shopBtn.textContent = "🛒 Check this shop";
+    }
+
+    function handleShoppingResult(result) {
+        chrome.storage.local.set({ lastShoppingAnalysis: result });
+        
+        // Update glow
+        glow.className = "catphis-glow";
+        if (result.risk_score >= 85) glow.classList.add("danger");
+        else if (result.risk_score >= 50) glow.classList.add("warn");
+        else glow.classList.add("safe");
+
+        // Add extra chat questions specific to shopping
+        ["Can I buy from here?", "Why is this shop risky?"].forEach(q => {
+            const btn = document.createElement("button");
+            btn.className = "catphis-quick-btn";
+            btn.textContent = q;
+            btn.style.borderColor = "rgba(167, 139, 250, .3)";
+            btn.style.color = "#a78bfa";
+            btn.onclick = () => { input.value = q; send(); };
+            quickBtnsArea.appendChild(btn);
+        });
+
+        const chatMsg = `This shop looks **${result.verdict}** (Score: ${result.risk_score}/100).\n\nReasons: ${result.reasons.join(", ") || "None found."}\n\nAdvice: ${result.advice}`;
+        
+        if (!chat.classList.contains("open")) {
+            chat.classList.add("open");
+            bubble.style.display = "none";
+        }
+        
+        addMsg(chatMsg, "bot");
+        conversationHistory.push({ role: "assistant", content: chatMsg });
+        saveHistory();
+        
+        if (result.risk_score >= 85) {
+            // Optional: Show warning overlay since risk_score >= 85
+            const warning = document.createElement("div");
+            warning.style.cssText = "position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);z-index:999999;display:flex;align-items:center;justify-content:center;color:white;font-family:sans-serif;text-align:center;";
+            warning.innerHTML = `
+                <div style="background:#1f2937;padding:40px;border-radius:12px;max-width:500px;border:2px solid #ef4444;">
+                    <h1 style="color:#ef4444;margin-top:0;">⛔ HIGH RISK SHOP ⛔</h1>
+                    <p style="font-size:16px;">We detected multiple scam indicators on this store. We strongly advise against making any purchases or entering card details.</p>
+                    <button id="catphis-dismiss-warning" style="margin-top:20px;padding:10px 20px;background:#ef4444;color:white;border:none;border-radius:6px;cursor:pointer;font-weight:bold;">I understand, let me proceed</button>
+                </div>
+            `;
+            document.body.appendChild(warning);
+            document.getElementById("catphis-dismiss-warning").onclick = () => warning.remove();
+        }
+    }
+
+    const shopBtn = document.createElement("button");
+    shopBtn.className = "catphis-quick-btn";
+    shopBtn.textContent = "🛒 Check this shop";
+    shopBtn.style.borderColor = "rgba(59,130,246,.3)";
+    shopBtn.style.color = "#60a5fa";
+    shopBtn.onclick = checkShoppingSite;
+    quickBtnsArea.appendChild(shopBtn);
+
+    if (isShoppingPage()) {
+        setTimeout(checkShoppingSite, 1500);
+    }
+
     sendBtn.onclick = send;
     input.onkeydown = (e) => { if (e.key === "Enter") send(); };
+
 
     inputArea.append(input, sendBtn);
     chat.append(header, msgArea, quickBtnsArea, inputArea);
@@ -1273,6 +1409,8 @@
 
     const selectors = [
       '.a3s.aiL', // Gmail strict body
+      '.ii.gt', // Common Gmail message body
+      'div[data-message-id]', // Generic Gmail message
       '[aria-label*="Message body"]', '[role="document"]', 'div[dir="ltr"]', // Outlook
       '[data-test-id="message-view-body"]', '.msg-body', // Yahoo
       'article' // Generic fallback
@@ -1287,6 +1425,17 @@
           return visibleEls.reduce((max, el) => el.getBoundingClientRect().height > max.getBoundingClientRect().height ? el : max, visibleEls[0]);
       }
     }
+    
+    // Ultimate fallback for Gmail
+    if (window.location.hostname.includes("mail.google.com")) {
+        const allTextDivs = Array.from(document.querySelectorAll('div[dir="ltr"]'));
+        const visibleDivs = allTextDivs.filter(el => {
+            const rect = el.getBoundingClientRect();
+            return rect.height > 10 && rect.width > 50 && rect.top > 0 && rect.bottom < window.innerHeight;
+        });
+        if (visibleDivs.length > 0) return visibleDivs[visibleDivs.length - 1];
+    }
+    
     return null;
   }
 
@@ -1415,6 +1564,26 @@
         score += 30; reasons.push("Sender name mimics a brand but email address does not match");
     }
 
+    // Scam Message rules merged into email
+    if (body.match(/gift card|crypto|bitcoin|wire transfer|itunes/)) {
+        score += 50; reasons.push("Request for untraceable payment (gift card/crypto)");
+    }
+    if (body.includes("account is locked") || body.includes("bank account locked")) {
+        score += 85; reasons.push("Bank account lock scam");
+    }
+    if (body.match(/mom|dad|son|daughter|mum/) && body.includes("new number")) {
+        score += 80; reasons.push("Family impersonation");
+    }
+    if (body.includes("send money") || body.includes("lost my phone") || body.includes("transfer needed")) {
+        score += 60; reasons.push("Emergency money request");
+    }
+    if (body.match(/package|delivery|stuck/) && body.match(/fee|pay|customs/)) {
+        score += 75; reasons.push("Package delivery scam");
+    }
+    if (body.includes("won a prize") || body.includes("claim now") || body.includes("lottery")) {
+        score += 70; reasons.push("Prize scam");
+    }
+
     emailData.links.forEach(link => {
         const h = link.href.toLowerCase();
         const t = link.text.toLowerCase();
@@ -1461,20 +1630,14 @@
   }
 
   async function analyzeEmailWithTimeout(emailData) {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 2000);
     try {
-      const response = await fetch(`${BACKEND}/analyze-email`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(emailData),
-        signal: controller.signal
-      });
-      clearTimeout(timeoutId);
-      if (response.ok) return await response.json();
-    } catch (e) {
-      clearTimeout(timeoutId);
-    }
+        const response = await new Promise((resolve) => {
+            chrome.runtime.sendMessage({ action: "fetch-email", payload: emailData }, resolve);
+        });
+        if (response && response.data && !response.error) {
+            return response.data;
+        }
+    } catch (e) {}
     return null;
   }
 
@@ -1579,11 +1742,11 @@
 
   function scheduleEmailScan(reason) {
       if (reason === "manual" || reason === "navigation") {
-          setTimeout(() => performEmailScan(reason), 50);
+          setTimeout(() => performEmailScan(reason), 600);
       } else if (window.requestIdleCallback) {
-          window.requestIdleCallback(() => performEmailScan(reason), { timeout: 500 });
+          window.requestIdleCallback(() => performEmailScan(reason), { timeout: 1000 });
       } else {
-          setTimeout(() => performEmailScan(reason), 200);
+          setTimeout(() => performEmailScan(reason), 600);
       }
   }
 
@@ -1606,6 +1769,158 @@
         lastScannedEmailFingerprint = null;
         scheduleEmailScan("navigation");
     });
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // CHAT SCANNER (WhatsApp, Discord, Messenger, etc.)
+  // ═══════════════════════════════════════════════════════════════════════
+
+  let chatScanTimeout = null;
+  let lastScannedChatFingerprint = null;
+  let lastChatScanMsg = "";
+
+  function isChatPage() {
+    const h = window.location.hostname;
+    return h.includes("web.whatsapp.com") || 
+           h.includes("discord.com") || 
+           h.includes("messenger.com") ||
+           h.includes("instagram.com/direct");
+  }
+
+  function extractChatDataFast() {
+    let messages = [];
+    const h = window.location.hostname;
+    
+    if (h.includes("web.whatsapp.com")) {
+        const chatPanel = document.querySelector('#main') || document.querySelector('div[role="main"]');
+        if (chatPanel) {
+            const nodes = chatPanel.querySelectorAll('span[dir="ltr"].selectable-text, span.selectable-text');
+            if (nodes.length > 0) {
+                messages = Array.from(nodes).map(n => n.innerText);
+            } else {
+                messages = [chatPanel.innerText];
+            }
+        }
+    } else if (h.includes("discord.com")) {
+        const nodes = document.querySelectorAll('li[class^="messageListItem"] div[id^="message-content"]');
+        messages = Array.from(nodes).map(n => n.innerText);
+    } else if (h.includes("messenger.com")) {
+        const nodes = document.querySelectorAll('[dir="auto"]');
+        messages = Array.from(nodes).map(n => n.innerText);
+    } else {
+        const text = extractPageText();
+        messages = [text.substring(text.length - 1000)];
+    }
+    
+    // Return last 5 messages
+    return messages.slice(-5).join("\n").trim();
+  }
+
+  async function performChatScan() {
+    const chatText = extractChatDataFast();
+    if (!chatText || chatText.length < 10) return;
+
+    let hash = 0;
+    for (let i = 0; i < chatText.length; i++) {
+        hash = ((hash << 5) - hash) + chatText.charCodeAt(i);
+        hash |= 0;
+    }
+    const fingerprint = hash.toString();
+
+    if (fingerprint === lastScannedChatFingerprint) return;
+    lastScannedChatFingerprint = fingerprint;
+
+    const payload = {
+        message_text: chatText,
+        page_url: PAGE_URL,
+        source: "auto_chat_scan"
+    };
+
+    let result = null;
+    let source = "backend";
+
+    try {
+        const response = await new Promise((resolve) => {
+            chrome.runtime.sendMessage({ action: "fetch-message", payload: payload }, resolve);
+        });
+        if (response && response.data && !response.error) {
+            result = response.data;
+        } else {
+            throw new Error("Backend offline");
+        }
+    } catch(err) {
+        result = fallbackScamAnalysis(chatText);
+        source = "local_fallback";
+    }
+
+    if (result.risk_score >= 40) {
+        updateEmailRiskUI(result);
+        addChatScanMessage(result, source);
+    } else {
+        const glow = document.querySelector('.catphis-glow');
+        if (glow && (glow.classList.contains('danger') || glow.classList.contains('warn'))) {
+            updateEmailRiskUI(result);
+            // Optionally clear the bubble if it was showing a scam warning
+            const bubble = document.querySelector('.catphis-bubble');
+            if (bubble) bubble.style.display = "none";
+        }
+    }
+  }
+
+  function scheduleChatScan() {
+    if (window.requestIdleCallback) {
+        window.requestIdleCallback(performChatScan, { timeout: 1000 });
+    } else {
+        setTimeout(performChatScan, 500);
+    }
+  }
+
+  function startChatWatcher() {
+    scheduleChatScan();
+    
+    const observer = new MutationObserver(() => {
+      if (chatScanTimeout) clearTimeout(chatScanTimeout);
+      chatScanTimeout = setTimeout(scheduleChatScan, 500);
+    });
+    observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+
+    window.addEventListener("hashchange", () => {
+        lastScannedChatFingerprint = null;
+        scheduleChatScan();
+    });
+    window.addEventListener("popstate", () => {
+        lastScannedChatFingerprint = null;
+        scheduleChatScan();
+    });
+  }
+
+  function addChatScanMessage(result, source) {
+    if (!window.__catphisAddMsg) return;
+    let msg = "";
+
+    if (source === "local_fallback") {
+        msg += "I did a quick local scan of new messages.\n";
+    }
+    if (result.risk_score >= 70) {
+        msg += `⚠️ Scam warning! I noticed a dangerous message in this chat: ${result.reasons.slice(0,2).join(', ')}. DO NOT send money or click links!`;
+    } else {
+        msg += `Suspicious message detected: ${result.reasons.slice(0,2).join(', ')}. Please verify the person's identity before acting.`;
+    }
+
+    if (msg !== lastChatScanMsg) {
+        lastChatScanMsg = msg;
+        window.__catphisAddMsg(msg, "bot");
+    }
+
+    const chat = document.querySelector('.catphis-chat');
+    const bubble = document.querySelector('.catphis-bubble');
+    if (chat && !chat.classList.contains("open") && bubble) {
+        bubble.textContent = result.risk_score >= 70 ? "⛔ Scam message detected!" : "⚠️ Suspicious message detected!";
+        bubble.style.borderColor = result.risk_score >= 70 ? "rgba(239,68,68,.6)" : "rgba(245,158,11,.5)";
+        bubble.style.display = "block";
+        setTimeout(() => { bubble.style.transition = "opacity .6s"; bubble.style.opacity = "0"; }, 6000);
+        setTimeout(() => { bubble.style.display = "none"; bubble.style.opacity = ""; }, 6700);
+    }
   }
 
   // ═══════════════════════════════════════════════════════════════════════
@@ -1642,6 +1957,11 @@
       // Start Email Watcher if we are on a webmail page
       if (isWebmailPage()) {
           startEmailWatcher();
+      }
+      
+      // Start Chat Watcher if we are on a chat page
+      if (isChatPage()) {
+          startChatWatcher();
       }
 
     } catch (err) {

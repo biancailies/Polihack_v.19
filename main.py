@@ -107,6 +107,34 @@ class MessageAnalysisResponse(BaseModel):
     reasons: list[str]
     advice: str
 
+class LinkInfo(BaseModel):
+    text: str
+    href: str
+
+class FormInfo(BaseModel):
+    action: str
+    method: str
+    hasPassword: bool
+    inputTypes: list[str] = []
+
+
+class ShoppingRequest(BaseModel):
+    url: str
+    hostname: str
+    title: str
+    body_text: str
+    links: list[LinkInfo] = []
+    forms: list[FormInfo] = []
+    detected_prices: list[str] = []
+    detected_payment_words: list[str] = []
+
+class ShoppingResponse(BaseModel):
+    risk_score: int
+    verdict: str
+    reasons: list[str]
+    advice: str
+    dangerous_links: list[str]
+
 
 
 # ── Helper: extract ML features ───────────────────────────────────────────────
@@ -231,6 +259,24 @@ def analyze_email(request: EmailRequest):
     if any(b in sender_lower and b not in sender_email_lower for b in brands):
         score += 0.30
         reasons.append(f"Sender name mimics a brand but email address does not match")
+
+    # Scam message rules merged into email
+    scam_keywords = ["gift card", "crypto", "bitcoin", "wire transfer", "itunes"]
+    if any(w in body_lower for w in scam_keywords):
+        score += 0.50
+        reasons.append("Request for untraceable payment (gift card/crypto)")
+        
+    if "account is locked" in body_lower or "bank account locked" in body_lower:
+        score += 0.85
+        reasons.append("Bank account lock scam")
+        
+    if any(w in body_lower for w in ["mom", "dad", "son", "daughter", "mum"]) and "new number" in body_lower:
+        score += 0.80
+        reasons.append("Family impersonation")
+        
+    if any(w in body_lower for w in ["send money", "lost my phone", "transfer needed"]):
+        score += 0.60
+        reasons.append("Emergency money request")
         
     def get_domain(url_str):
         try:
@@ -516,6 +562,113 @@ def analyze_message(request: MessageRequest):
 
     # Local fallback
     return analyze_scam_message_local(request.message_text)
+
+
+# ── Fake Shopping Site Detector ───────────────────────────────────────────────
+
+@app.post("/analyze-shopping", response_model=ShoppingResponse)
+def analyze_shopping(request: ShoppingRequest):
+    score = 0
+    reasons = []
+    dangerous_links = []
+    
+    text_lower = request.body_text.lower()
+    title_lower = request.title.lower()
+    url_lower = request.url.lower()
+    hostname = request.hostname.lower()
+    
+    # 1. Extreme discount language
+    discount_phrases = ["80% off", "90% off", "70% off", "clearance", "today only", "limited stock", "liquidation", "going out of business"]
+    if any(phrase in text_lower or phrase in title_lower for phrase in discount_phrases):
+        score += 35
+        reasons.append("Extreme discount language detected (e.g. 80-90% off, clearance, today only)")
+
+    # 2. Suspicious payment methods
+    suspicious_payments = ["crypto", "bitcoin", "gift card", "wire transfer", "western union", "bank transfer only"]
+    # Check words sent from frontend or inside the text
+    found_payments = [w for w in suspicious_payments if w in text_lower or w in request.detected_payment_words]
+    if found_payments:
+        score += 45
+        reasons.append(f"Suspicious payment methods requested ({', '.join(set(found_payments))})")
+
+    # 3. Missing trust signals
+    has_contact = "contact" in text_lower or any("contact" in link.text.lower() or "contact" in link.href.lower() for link in request.links)
+    has_return = "return" in text_lower or "refund" in text_lower or any("return" in link.text.lower() or "refund" in link.text.lower() for link in request.links)
+    has_privacy = "privacy" in text_lower or any("privacy" in link.text.lower() for link in request.links)
+    
+    missing_trust = []
+    if not has_contact: missing_trust.append("Contact page")
+    if not has_return: missing_trust.append("Return/Refund policy")
+    if not has_privacy: missing_trust.append("Privacy policy")
+    
+    if missing_trust:
+        score += 25
+        reasons.append(f"Missing trust signals: {', '.join(missing_trust)}")
+
+    # 4. Fake urgency
+    urgency_phrases = ["countdown", "only 2 left", "only 1 left", "order now", "hurry", "deal expires in"]
+    if any(phrase in text_lower for phrase in urgency_phrases):
+        score += 20
+        reasons.append("Fake urgency tactics (e.g. timers, low stock warnings)")
+
+    # 5. Suspicious domain
+    # check if brand + discount/outlet is in domain
+    brands = ["nike", "rayban", "oakley", "gucci", "louisvuitton", "northface", "timberland"]
+    if any(b in hostname for b in brands) and any(w in hostname for w in ["discount", "outlet", "sale", "store", "cheap", "clearance"]):
+        score += 50
+        reasons.append("Domain mimics a brand with 'discount' or 'outlet' keywords")
+    
+    if hostname.count("-") >= 2:
+        score += 15
+        reasons.append("Domain contains multiple hyphens")
+        
+    weird_tlds = [".top", ".vip", ".club", ".shop", ".xyz", ".online", ".site", ".cyou"]
+    if any(hostname.endswith(tld) for tld in weird_tlds):
+        score += 20
+        reasons.append("Domain uses a low-trust TLD (e.g. .shop, .vip, .top)")
+
+    # 6. Login/payment forms on unknown domain
+    for form in request.forms:
+        action_lower = form.action.lower()
+        if action_lower and not action_lower.startswith("/") and hostname not in action_lower:
+            score += 30
+            reasons.append("Form submits data to a different external domain")
+            if action_lower not in dangerous_links:
+                dangerous_links.append(action_lower)
+
+    # 7. Links to suspicious checkout domains
+    for link in request.links:
+        href_lower = link.href.lower()
+        if any(w in href_lower for w in ["checkout", "pay", "cart"]):
+            if "http" in href_lower and hostname not in href_lower and "paypal.com" not in href_lower and "stripe.com" not in href_lower:
+                # Checkout link pointing to an unknown 3rd party
+                if "Suspicious external checkout link" not in reasons:
+                    score += 25
+                    reasons.append("Suspicious external checkout link")
+                if link.href not in dangerous_links:
+                    dangerous_links.append(link.href)
+
+    score = min(100, int(score))
+
+    if score >= 85:
+        verdict = "Likely Scam"
+        advice = "This store shows multiple high-risk scam indicators. DO NOT buy from here or enter your card details."
+    elif score >= 50:
+        verdict = "Suspicious"
+        advice = "This store has several suspicious elements (e.g. extreme discounts, missing policies). Proceed with extreme caution."
+    else:
+        verdict = "Safe"
+        advice = "We did not detect obvious scam signals, but always use a secure payment method like a credit card or PayPal."
+        if not reasons:
+            reasons.append("Shop looks standard")
+
+    return ShoppingResponse(
+        risk_score=score,
+        verdict=verdict,
+        reasons=reasons,
+        advice=advice,
+        dangerous_links=dangerous_links
+    )
 
 
 # ── GET / (health check) ──────────────────────────────────────────────────────
