@@ -26,7 +26,9 @@
 
   function extractPageText() {
     if (!document.body) return "";
-    return (document.body.innerText || "").trim().slice(0, TEXT_LIMIT);
+    const text = (document.body.innerText || "").trim();
+    if (text.length <= TEXT_LIMIT) return text;
+    return text.slice(0, 2000) + "\n\n...[CONTENT TRUNCATED]...\n\n" + text.slice(-1000);
   }
 
   function extractForms() {
@@ -191,6 +193,14 @@
     if (document.getElementById(STYLES_ID)) return;
     const style = document.createElement("style");
     style.id = STYLES_ID;
+    // Inject Inter font once
+    if (!document.getElementById('__catphis_font__')) {
+      const lnk = document.createElement('link');
+      lnk.id = '__catphis_font__';
+      lnk.rel = 'stylesheet';
+      lnk.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap';
+      document.head.appendChild(lnk);
+    }
     style.textContent = `
       #catphis-root * { box-sizing: border-box; margin: 0; padding: 0; }
       #catphis-root {
@@ -200,13 +210,11 @@
         right: 20px;
         z-index: 2147483646;
         pointer-events: none;
-        font-family: -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
       }
       .catphis-positioner {
-        display: flex;
-        flex-direction: column;
-        align-items: flex-end;
-        gap: 10px;
+        position: relative;
+        display: inline-block;
         pointer-events: none;
         will-change: transform;
       }
@@ -214,7 +222,7 @@
         pointer-events: all;
         cursor: grab;
         position: relative;
-        width: 130px;
+        width: 200px;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -228,7 +236,7 @@
 
       .catphis-cat-svg-wrap {
         display: block;
-        width: 130px;
+        width: 160px;
         pointer-events: none;
       }
       .catphis-cat-svg-wrap svg { display: block; width: 100%; height: auto; }
@@ -245,7 +253,6 @@
       .catphis-glow.warn   { box-shadow: 0 0 24px 8px rgba(245,158,11,0.5); opacity: .8; }
       .catphis-glow.danger { box-shadow: 0 0 28px 10px rgba(239,68,68,0.6); opacity: .9; }
 
-      /* idle breathing */
       .catphis-anim-idle { animation: catphis-breathe 3.8s ease-in-out infinite; }
       @keyframes catphis-breathe {
         0%,100% { transform: translateY(0) scale(1); }
@@ -258,118 +265,309 @@
       }
 
       .catphis-bubble {
-        pointer-events: none;
-        background: linear-gradient(135deg, #1e1b2e, #12101f);
-        border: 1px solid rgba(167,139,250,.35);
-        border-radius: 8px 8px 2px 8px;
-        padding: 12px 16px;
+        pointer-events: all;
+        position: absolute;
+        bottom: calc(100% + 12px);
+        right: 0;
+        background: rgba(15, 10, 30, 0.92);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(167,139,250,.4);
+        border-radius: 16px 16px 4px 16px;
+        padding: 10px 15px;
         max-width: 240px;
         font-size: 13px;
-        color: #ddd6fe;
+        color: #e9d5ff;
         line-height: 1.5;
-        box-shadow: 0 6px 24px rgba(0,0,0,.6);
-        position: relative;
+        box-shadow: 0 8px 32px rgba(0,0,0,.6), 0 0 0 1px rgba(167,139,250,.08);
+        white-space: normal;
       }
       .catphis-bubble::after {
-        content:""; position:absolute; bottom:-8px; right:32px;
-        border:4px solid transparent; border-top-color:rgba(167,139,250,.35);
+        content: ""; position: absolute; bottom: -9px; right: 18px;
+        border: 5px solid transparent;
+        border-top-color: rgba(167,139,250,.4);
       }
 
       .catphis-chat {
         pointer-events: all;
-        width: 360px;
-        background: rgba(18, 14, 28, 0.95);
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
-        border: 1px solid rgba(139, 92, 246, 0.4);
-        border-radius: 16px;
-        box-shadow: 0 16px 48px rgba(0,0,0,0.8), 0 0 20px rgba(139, 92, 246, 0.15);
+        position: absolute;
+        bottom: calc(100% + 14px);
+        right: 0;
+        width: 340px;
+        background: rgba(10, 7, 22, 0.96);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid rgba(139,92,246,.25);
+        border-radius: 20px;
+        box-shadow:
+          0 24px 60px rgba(0,0,0,.85),
+          0 0 0 1px rgba(139,92,246,.1),
+          inset 0 1px 0 rgba(255,255,255,.06);
         overflow: hidden;
         display: none;
         flex-direction: column;
-        max-height: 560px;
+        max-height: 500px;
+        transform-origin: bottom right;
       }
-      .catphis-chat.open { display:flex; animation: catphis-pop-in .3s cubic-bezier(.4,0,.2,1) both; }
+      .catphis-chat.open {
+        display: flex;
+        animation: catphis-chat-open .28s cubic-bezier(.34,1.56,.64,1) both;
+      }
+      @keyframes catphis-chat-open {
+        from { opacity:0; transform: scale(.85) translateY(12px); }
+        to   { opacity:1; transform: scale(1)   translateY(0); }
+      }
 
       .catphis-chat-header {
-        background: linear-gradient(135deg, #4c1d95, #6d28d9);
-        padding: 16px 18px; display:flex; align-items:center; gap:12px;
-        border-bottom: 1px solid rgba(255,255,255,0.1);
+        padding: 14px 16px 12px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        background: linear-gradient(135deg, rgba(76,29,149,.9), rgba(109,40,217,.8));
+        border-bottom: 1px solid rgba(139,92,246,.2);
+        position: relative;
+        overflow: hidden;
       }
-      .catphis-chat-header-info { flex:1; display:flex; flex-direction:column; }
-      .catphis-chat-header-title { font-size:15px; font-weight:700; color:#fff; display:flex; align-items:center; gap:6px; }
-      .catphis-chat-header-subtitle { font-size:11px; color:#c4b5fd; margin-top:2px; font-weight:500; }
-      
-      .catphis-chat-header-clear, .catphis-chat-header-close {
-        cursor:pointer; font-size:14px; color:rgba(255,255,255,.8);
-        width: 28px; height: 28px; border:none; background:rgba(255,255,255,0.1);
-        border-radius:8px; display: flex; align-items: center; justify-content: center;
-        transition:color .2s, background .2s, transform .2s;
+      .catphis-chat-header::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(135deg, transparent 40%, rgba(167,139,250,.08));
+        pointer-events: none;
       }
-      .catphis-chat-header-clear:hover, .catphis-chat-header-close:hover { 
-        color:#fff; background:rgba(255,255,255,.2); transform:scale(1.05); 
+      .catphis-chat-avatar {
+        width: 36px; height: 36px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #1e1b2e, #2d1b69);
+        border: 2px solid rgba(167,139,250,.4);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 18px;
+        flex-shrink: 0;
+        box-shadow: 0 0 12px rgba(139,92,246,.4);
       }
+      .catphis-chat-header-info { flex: 1; }
+      .catphis-chat-header-title {
+        font-size: 14px; font-weight: 700; color: #fff;
+        letter-spacing: -.2px; line-height: 1.2;
+      }
+      .catphis-chat-header-sub {
+        font-size: 11px; color: rgba(167,139,250,.7); margin-top: 1px;
+        display: flex; align-items: center; gap: 5px;
+      }
+      .catphis-status-dot {
+        width: 6px; height: 6px; border-radius: 50%; background: #22c55e;
+        box-shadow: 0 0 5px #22c55e;
+        animation: catphis-pulse 2s ease-in-out infinite;
+      }
+      @keyframes catphis-pulse {
+        0%,100% { opacity: 1; } 50% { opacity: .4; }
+      }
+      .catphis-chat-header-close {
+        all: unset; cursor: pointer;
+        width: 28px; height: 28px;
+        border-radius: 8px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 14px; color: rgba(255,255,255,.5);
+        transition: color .15s, background .15s;
+        flex-shrink: 0;
+      }
+      .catphis-chat-header-close:hover { color:#fff; background:rgba(255,255,255,.12); }
 
       .catphis-chat-messages {
-        flex:1; overflow-y:auto; padding:16px; display:flex; flex-direction:column;
-        gap:12px; min-height:250px; max-height:350px; scrollbar-width:thin;
-        scrollbar-color: rgba(139,92,246,.4) transparent;
+        flex: 1;
+        overflow-y: auto;
+        padding: 14px 14px 8px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        min-height: 200px;
+        max-height: 280px;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(139,92,246,.25) transparent;
       }
       .catphis-chat-messages::-webkit-scrollbar { width: 6px; }
+      .catphis-chat-messages::-webkit-scrollbar-track { background: transparent; }
       .catphis-chat-messages::-webkit-scrollbar-thumb { background: rgba(139,92,246,.4); border-radius: 3px; }
+
+      .catphis-msg-row { display: flex; align-items: flex-end; gap: 7px; }
+      .catphis-msg-row.user { flex-direction: row-reverse; }
+      .catphis-msg-icon {
+        width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0;
+        background: linear-gradient(135deg, #1e1b2e, #2d1b69);
+        border: 1px solid rgba(139,92,246,.3);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 13px;
+      }
       
       .catphis-msg {
-        max-width:85%; padding:12px 16px; border-radius:12px; font-size:14px; line-height:1.5;
-        animation: catphis-pop-in .2s ease both; box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-        word-wrap: break-word;
+        max-width: 78%;
+        padding: 10px 14px;
+        border-radius: 16px;
+        font-size: 13px;
+        line-height: 1.55;
+        animation: catphis-msg-in .22s cubic-bezier(.34,1.56,.64,1) both;
       }
-      .catphis-msg.bot  { align-self:flex-start; background:rgba(109,40,217,.2); border:1px solid rgba(139,92,246,.3); color:#e9d5ff; border-radius:4px 16px 16px 16px; }
-      .catphis-msg.user { align-self:flex-end; background:linear-gradient(135deg,#6d28d9,#8b5cf6); color:#fff; border-radius:16px 4px 16px 16px; border:1px solid rgba(255,255,255,0.1); }
-      .catphis-msg.typing { align-self:flex-start; font-style:italic; color:#a78bfa; background:none; font-size:13px; box-shadow:none; border:none; padding:8px 12px; }
+      @keyframes catphis-msg-in {
+        from { opacity:0; transform: translateY(6px) scale(.96); }
+        to   { opacity:1; transform: translateY(0) scale(1); }
+      }
+      .catphis-msg.bot {
+        align-self: flex-start;
+        background: rgba(30, 20, 60, 0.8);
+        border: 1px solid rgba(139,92,246,.2);
+        color: #e9d5ff;
+        border-radius: 4px 16px 16px 16px;
+      }
+      .catphis-msg.user {
+        align-self: flex-end;
+        background: linear-gradient(135deg, #5b21b6, #7c3aed);
+        color: #fff;
+        border-radius: 16px 4px 16px 16px;
+        box-shadow: 0 4px 12px rgba(124,58,237,.35);
+      }
+      .catphis-msg.typing {
+        align-self: flex-start;
+        background: rgba(30,20,60,.6);
+        border: 1px solid rgba(139,92,246,.15);
+        border-radius: 4px 16px 16px 16px;
+        padding: 12px 16px;
+        display: flex; align-items: center; gap: 4px;
+      }
+      .catphis-dot {
+        width: 6px; height: 6px; border-radius: 50%; background: #a78bfa;
+        animation: catphis-dots 1.2s ease-in-out infinite;
+      }
+      .catphis-dot:nth-child(2) { animation-delay: .2s; }
+      .catphis-dot:nth-child(3) { animation-delay: .4s; }
+      @keyframes catphis-dots {
+        0%,60%,100% { transform: translateY(0); opacity: .5; }
+        30% { transform: translateY(-5px); opacity: 1; }
+      }
 
-      .catphis-chat-input-area { display:flex; gap:10px; padding:16px; border-top:1px solid rgba(139,92,246,.2); background: rgba(0,0,0,0.2); }
+      .catphis-divider {
+        text-align: center; font-size: 10px; color: rgba(139,92,246,.4);
+        letter-spacing: .5px; text-transform: uppercase; margin: 2px 0;
+      }
+
+      .catphis-chat-input-area {
+        display: flex;
+        gap: 8px;
+        padding: 12px 14px;
+        border-top: 1px solid rgba(139,92,246,.12);
+        background: rgba(15,10,35,.6);
+        align-items: center;
+      }
       .catphis-chat-input {
-        flex:1; background:rgba(0,0,0,.3); border:1px solid rgba(139,92,246,.4);
-        border-radius:12px; padding:12px 16px; color:#fff; font-size:14px;
-        transition:border-color .2s, box-shadow .2s; outline:none; font-family:inherit; min-width:0;
+        all: unset;
+        flex: 1;
+        background: rgba(139,92,246,.08);
+        border: 1px solid rgba(139,92,246,.2);
+        border-radius: 12px;
+        padding: 10px 14px;
+        color: #e9d5ff;
+        font-size: 13px;
+        line-height: 1.4;
+        transition: border-color .2s, background .2s;
       }
-      .catphis-chat-input::placeholder { color: #a78bfa; opacity: 0.6; }
-      .catphis-chat-input:focus { border-color:#8b5cf6; box-shadow: 0 0 0 2px rgba(139,92,246,.2); }
-      .catphis-chat-input:disabled { opacity: 0.6; cursor: not-allowed; }
-      
+      .catphis-chat-input::placeholder { color: rgba(167,139,250,.35); }
+      .catphis-chat-input:focus {
+        border-color: rgba(139,92,246,.55);
+        background: rgba(139,92,246,.12);
+      }
       .catphis-send-btn {
-        cursor:pointer; background:linear-gradient(135deg,#6d28d9,#8b5cf6);
-        color:#fff; border-radius:12px; padding:0 20px; font-weight:600; font-size:14px;
-        transition:opacity .2s, transform .1s, box-shadow .2s; border:none; outline:none; font-family:inherit;
+        all: unset;
+        cursor: pointer;
+        width: 38px; height: 38px;
+        border-radius: 12px;
+        background: linear-gradient(135deg, #5b21b6, #7c3aed);
         display: flex; align-items: center; justify-content: center;
-        box-shadow: 0 4px 12px rgba(109,40,217,0.4);
+        font-size: 16px;
+        flex-shrink: 0;
+        transition: opacity .15s, transform .15s, box-shadow .2s;
+        box-shadow: 0 4px 12px rgba(124,58,237,.4);
       }
-      .catphis-send-btn:hover { opacity:.9; box-shadow: 0 6px 16px rgba(109,40,217,0.6); transform:translateY(-1px); }
-      .catphis-send-btn:active { transform:translateY(1px); box-shadow: 0 2px 8px rgba(109,40,217,0.4); }
-      .catphis-send-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+      .catphis-send-btn:hover  { opacity: .9; box-shadow: 0 6px 16px rgba(124,58,237,.55); }
+      .catphis-send-btn:active { transform: scale(.88); }
+      .catphis-send-btn:disabled { opacity: .35; cursor: not-allowed; transform: none; }
+      .catphis-chat-input:disabled { opacity: .45; cursor: not-allowed; }
 
+      /* Quick action chips */
       .catphis-quick-btns {
-        display: flex; gap: 8px; padding: 0 16px 12px; flex-wrap: wrap;
-        border-top: 1px solid rgba(139,92,246,.1); background: rgba(0,0,0,0.1); padding-top:12px;
+        display: flex; flex-wrap: wrap; gap: 6px;
+        padding: 8px 14px 10px;
+        border-top: 1px solid rgba(139,92,246,.08);
+        background: rgba(15,10,35,.4);
       }
       .catphis-quick-btn {
-        background: rgba(139,92,246,.15);
-        border: 1px solid rgba(139,92,246,.3);
-        color: #e9d5ff; border-radius: 14px; padding: 6px 12px;
-        font-size: 12px; cursor: pointer; transition: all .2s;
-        font-family: inherit; font-weight: 500;
+        all: unset; cursor: pointer;
+        background: rgba(139,92,246,.1);
+        border: 1px solid rgba(139,92,246,.22);
+        border-radius: 20px;
+        padding: 5px 11px;
+        font-size: 11.5px;
+        color: #c4b5fd;
+        transition: background .15s, border-color .15s, transform .12s;
+        white-space: nowrap;
+        font-family: 'Inter', sans-serif;
       }
-      .catphis-quick-btn:hover { background: rgba(139,92,246,.4); color: #fff; transform:translateY(-1px); }
+      .catphis-quick-btn:hover {
+        background: rgba(139,92,246,.22);
+        border-color: rgba(139,92,246,.45);
+        transform: translateY(-1px);
+      }
+      .catphis-quick-btn:active { transform: scale(.95); }
+
+      /* Risk score card */
+      .catphis-risk-card {
+        border-radius: 12px;
+        padding: 12px 14px;
+        margin-bottom: 2px;
+        font-size: 12px;
+        line-height: 1.5;
+        border: 1px solid;
+        animation: catphis-msg-in .3s ease both;
+      }
+      .catphis-risk-card.safe   { background: rgba(16,185,129,.1); border-color: rgba(16,185,129,.3); color: #6ee7b7; }
+      .catphis-risk-card.warn   { background: rgba(245,158,11,.1); border-color: rgba(245,158,11,.3); color: #fcd34d; }
+      .catphis-risk-card.danger { background: rgba(239,68,68,.1);  border-color: rgba(239,68,68,.3);  color: #fca5a5; }
+      .catphis-risk-card-title { font-weight: 700; font-size: 13px; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+      .catphis-risk-bar-bg {
+        height: 5px; border-radius: 3px; background: rgba(255,255,255,.1); overflow: hidden; margin-bottom: 7px;
+      }
+      .catphis-risk-bar-fill { height: 100%; border-radius: 3px; transition: width 1s cubic-bezier(.4,0,.2,1); }
+      .catphis-risk-bar-fill.safe   { background: linear-gradient(90deg,#10b981,#34d399); }
+      .catphis-risk-bar-fill.warn   { background: linear-gradient(90deg,#f59e0b,#fbbf24); }
+      .catphis-risk-bar-fill.danger { background: linear-gradient(90deg,#ef4444,#f87171); }
+      .catphis-risk-reason { font-size: 11px; opacity: .8; padding-left: 2px; }
+      .catphis-risk-reason::before { content: '• '; }
+
+      /* Toast */
+      .catphis-toast {
+        position: absolute;
+        bottom: 70px; left: 50%; transform: translateX(-50%);
+        background: rgba(16,185,129,.92);
+        color: #fff; font-size: 12px; font-weight: 600;
+        padding: 7px 16px; border-radius: 20px;
+        white-space: nowrap;
+        box-shadow: 0 4px 16px rgba(0,0,0,.4);
+        animation: catphis-toast-in .3s ease both;
+        pointer-events: none; z-index: 10;
+      }
+      @keyframes catphis-toast-in {
+        from { opacity:0; transform: translateX(-50%) translateY(8px); }
+        to   { opacity:1; transform: translateX(-50%) translateY(0); }
+      }
     `;
     document.head.appendChild(style);
   }
+
 
   // ═══════════════════════════════════════════════════════════════════════
   // BOT RESPONSES & HISTORY
   // ═══════════════════════════════════════════════════════════════════════
 
   let conversationHistory = [];
-  
+
   async function loadHistory() {
     return new Promise(res => {
         chrome.storage.local.get("chatHistory", (data) => {
@@ -383,7 +581,7 @@
         });
     });
   }
-  
+
   function saveHistory() {
     if (conversationHistory.length > 10) {
         conversationHistory = conversationHistory.slice(-10);
@@ -394,8 +592,8 @@
   }
 
   async function fetchChatResponse(msg, riskScore) {
+    let analysisResult = null;
     try {
-      let analysisResult = null;
       const data = await new Promise(res => chrome.storage.local.get("lastDomAnalysis", res));
       if (data && data.lastDomAnalysis && data.lastDomAnalysis.url === PAGE_URL) {
         analysisResult = data.lastDomAnalysis;
@@ -462,31 +660,53 @@
       throw new Error("Backend chat failed");
     } catch (err) {
       console.error("[CatPhis] Chat backend error:", err);
-      return getLocalBotResponse(msg, riskScore);
+      return getLocalBotResponse(msg, riskScore, analysisResult?.reasons || []);
     }
   }
 
-  function getLocalBotResponse(msg, riskScore) {
+  function getLocalBotResponse(msg, riskScore, reasons) {
     const m = msg.toLowerCase().trim();
-    if (m.includes("safe") || m.includes("sigur"))
-      return (riskScore || 0) < 40 ? "Looks safe to me 😺 No suspicious signals here." : "Score is " + (riskScore || 0) + "/100 — be careful! 🐾";
-    if (m.includes("phishing") || m.includes("pericol") || m.includes("suspicious"))
-      return "That smells like phishing 🐟 Don't enter passwords on this page!";
-    if (m.includes("score") || m.includes("scor") || m.includes("risc") || m.includes("risk"))
+    const score = riskScore || 0;
+    const reasonList = (reasons && reasons.length) ? '\n\nDetected: ' + reasons.slice(0, 2).join('; ') + '.' : '';
+
+    if (m.includes("safe") || m.includes("sigur") || m.includes("legit"))
+      return score < 40
+        ? "✅ This page looks clean! No phishing signals detected. Stay safe 😺"
+        : `⚠️ Risk score is ${score}/100 — don't fully trust this page.${reasonList}`;
+
+    if (m.includes("why") || m.includes("reason") || m.includes("suspicious") || m.includes("explain"))
+      return reasons && reasons.length
+        ? `🔍 Here's what I found:\n${reasons.map(r => '• ' + r).join('\n')}`
+        : "I couldn't find specific issues, but stay cautious on unfamiliar pages.";
+
+    if (m.includes("score") || m.includes("risk") || m.includes("scor") || m.includes("risc"))
       return riskScore != null
-        ? `Risk score: ${riskScore}/100. ${riskScore >= 70 ? "⛔ Dangerous!" : riskScore >= 40 ? "⚠️ Be cautious." : "✅ Looks clean."}`
-        : "Still analyzing... ask me again in a moment!";
-    if (m.includes("help") || m.includes("ajutor") || m.includes("what should i do"))
-      return "Ask me: 'is this site safe?', 'why is it suspicious?', or 'can I enter my password?'. I'm always watching 👀";
-    if (m.includes("hello") || m.includes("salut") || m.includes("hi"))
-      return "Meow! 🐾 I'm CatPhish, your security guardian. How can I help?";
-    if (m.includes("password") || m.includes("parola"))
-      return "⚠️ Never enter your password on suspicious pages! Check the score first.";
+        ? `📊 Risk score: ${score}/100. ${score >= 70 ? '⛔ Dangerous — leave now!' : score >= 40 ? '⚠️ Suspicious — be cautious.' : '✅ Looks clean.'}`
+        : "Still analyzing this page... ask me again in a moment!";
+
+    if (m.includes("password") || m.includes("parola") || m.includes("login") || m.includes("credentials"))
+      return score >= 40
+        ? `🚨 Do NOT enter your password here! Risk score is ${score}/100.${reasonList}`
+        : "This page seems safe for login, but always double-check the URL bar 🔒";
+
+    if (m.includes("report") || m.includes("flag"))
+      return "Use the '🚩 Report Site' button below to report this page to our team!";
+
+    if (m.includes("what should i do") || m.includes("help") || m.includes("ajutor"))
+      return score >= 70
+        ? "⛔ Leave this page immediately! Don't click anything or enter any info."
+        : score >= 40
+        ? "⚠️ Be very careful. Avoid entering personal data. You can also report it below."
+        : "Looks okay! But always verify the URL and look for HTTPS 🔐";
+
+    if (m.includes("hello") || m.includes("hi") || m.includes("salut") || m.includes("hey"))
+      return "Meow! 🐾 I'm CatPhish, your anti-phishing guardian. Ask me anything about this page!";
+
     const defaults = [
-      "I'm watching this page for you... 👀",
-      "Meow. Let me sniff around 🐈‍⬛",
-      "Always scanning for threats 🛡️ Ask me if this is safe!",
-      "Try: 'is this site safe?' or 'why is it suspicious?'",
+      `I'm actively monitoring this page (score: ${score}/100) 👀`,
+      "Meow. Let me sniff around 🐈‍⬛ — try asking 'is this site safe?'",
+      "Always scanning for threats 🛡️ Ask me if you should trust this page!",
+      "Try: 'why is this suspicious?' or 'can I enter my password here?'",
     ];
     return defaults[Math.floor(Math.random() * defaults.length)];
   }
@@ -527,55 +747,105 @@
 
     const header = document.createElement("div");
     header.className = "catphis-chat-header";
-    
+
+    // Avatar
+    const avatar = document.createElement("div");
+    avatar.className = "catphis-chat-avatar";
+    avatar.textContent = "🐾";
+
     const infoArea = document.createElement("div");
     infoArea.className = "catphis-chat-header-info";
-    infoArea.innerHTML = `
-      <div class="catphis-chat-header-title">
-        <span>CatPhish Assistant</span>
-        <span style="font-size:16px;">🐾</span>
-      </div>
-      <div class="catphis-chat-header-subtitle">Your anti-phishing buddy</div>
-    `;
-    
+    const titleEl = document.createElement("div");
+    titleEl.className = "catphis-chat-header-title";
+    titleEl.textContent = "CatPhish Assistant";
+    const subEl = document.createElement("div");
+    subEl.className = "catphis-chat-header-sub";
+    const dot = document.createElement("span");
+    dot.className = "catphis-status-dot";
+    subEl.append(dot, document.createTextNode("Anti-phishing AI"));
+    infoArea.append(titleEl, subEl);
+
     const actionsArea = document.createElement("div");
-    actionsArea.style.display = "flex";
-    actionsArea.style.gap = "8px";
-    
+    actionsArea.style.cssText = "display:flex;gap:6px;";
+
     const clearBtn = document.createElement("button");
-    clearBtn.className = "catphis-chat-header-clear";
-    clearBtn.textContent = "🔄";
+    clearBtn.className = "catphis-chat-header-close";
+    clearBtn.textContent = "↺";
     clearBtn.title = "New Chat";
+    clearBtn.style.fontSize = "18px";
     clearBtn.onclick = (e) => {
       e.stopPropagation();
       conversationHistory = [];
       saveHistory();
       msgArea.innerHTML = "";
+      injectRiskCard();
       addMsg("Meow! 🐈‍⬛ I'm CatPhish. Ask me about this page's safety!", "bot");
     };
 
     const closeBtn = document.createElement("button");
     closeBtn.className = "catphis-chat-header-close";
-    closeBtn.innerHTML = "✕";
+    closeBtn.textContent = "✕";
     closeBtn.onclick = (e) => { e.stopPropagation(); chat.classList.remove("open"); };
-    
+
     actionsArea.append(clearBtn, closeBtn);
-    header.append(infoArea, actionsArea);
+    header.append(avatar, infoArea, actionsArea);
 
     const msgArea = document.createElement("div");
     msgArea.className = "catphis-chat-messages";
 
     function addMsg(text, type) {
+      const row = document.createElement("div");
+      row.className = `catphis-msg-row ${type === "user" ? "user" : ""}`;
+
+      if (type === "bot") {
+        const icon = document.createElement("div");
+        icon.className = "catphis-msg-icon";
+        icon.textContent = "🐾";
+        row.appendChild(icon);
+      }
+
       const el = document.createElement("div");
       el.className = `catphis-msg ${type}`;
       el.textContent = text;
-      msgArea.appendChild(el);
+      row.appendChild(el);
+      msgArea.appendChild(row);
       msgArea.scrollTop = msgArea.scrollHeight;
     }
-    
+
+    // Helper: inject risk score card at top of messages
+    function injectRiskCard() {
+      if (riskScore == null) return;
+      const level = riskScore >= 70 ? 'danger' : riskScore >= 40 ? 'warn' : 'safe';
+      const icons = { safe: '✅', warn: '⚠️', danger: '⛔' };
+      const labels = { safe: 'Safe', warn: 'Suspicious', danger: 'Dangerous' };
+      const card = document.createElement("div");
+      card.className = `catphis-risk-card ${level}`;
+      const ttl = document.createElement("div");
+      ttl.className = "catphis-risk-card-title";
+      ttl.innerHTML = `${icons[level]} <span>${labels[level]}</span> <span style="margin-left:auto;font-weight:400;font-size:12px;">${riskScore}/100</span>`;
+      const barBg = document.createElement("div");
+      barBg.className = "catphis-risk-bar-bg";
+      const barFill = document.createElement("div");
+      barFill.className = `catphis-risk-bar-fill ${level}`;
+      barFill.style.width = "0%";
+      barBg.appendChild(barFill);
+      card.append(ttl, barBg);
+      if (verdict) {
+        const vd = document.createElement("div");
+        vd.style.cssText = "font-size:11px;opacity:.7;margin-bottom:5px;";
+        vd.textContent = `Verdict: ${verdict}`;
+        card.appendChild(vd);
+      }
+      msgArea.appendChild(card);
+      // Animate bar after paint
+      requestAnimationFrame(() => requestAnimationFrame(() => { barFill.style.width = riskScore + "%"; }));
+    }
+
     if (conversationHistory.length === 0) {
+      injectRiskCard();
       addMsg("Meow! 🐈‍⬛ I'm CatPhish. Ask me about this page's safety!", "bot");
     } else {
+      injectRiskCard();
       conversationHistory.forEach(m => addMsg(m.content, m.role === "user" ? "user" : "bot"));
       setTimeout(() => msgArea.scrollTop = msgArea.scrollHeight, 50);
     }
@@ -587,44 +857,67 @@
     input.placeholder = "Ask me anything...";
     const sendBtn = document.createElement("button");
     sendBtn.className = "catphis-send-btn";
-    sendBtn.textContent = "Send";
+    sendBtn.textContent = "➤";
+    sendBtn.title = "Send";
 
     const quickBtnsArea = document.createElement("div");
     quickBtnsArea.className = "catphis-quick-btns";
     const quickQuestions = [
-      "Is this website safe?",
-      "Why is this website suspicious?",
-      "Can I enter my password here?",
-      "What should I do now?"
+      "Is this safe?",
+      "Why is it suspicious?",
+      "Can I enter my password?",
+      "What should I do?"
     ];
+
+    function showToast(msg, color) {
+      const t = document.createElement("div");
+      t.className = "catphis-toast";
+      t.textContent = msg;
+      if (color) t.style.background = color;
+      positioner.appendChild(t);
+      setTimeout(() => { t.style.opacity = "0"; t.style.transition = "opacity .4s"; }, 2200);
+      setTimeout(() => t.remove(), 2700);
+    }
 
     async function send() {
       const text = input.value.trim();
       if (!text) return;
-      addMsg(text, "user");
-      input.value = "";
-      sendBtn.disabled = true;
+      // Lock UI
       input.disabled = true;
-
+      sendBtn.disabled = true;
+      addMsg(text, "user");
       conversationHistory.push({ role: "user", content: text });
       saveHistory();
+      input.value = "";
 
-      const t = document.createElement("div");
-      t.className = "catphis-msg typing";
-      t.textContent = "CatPhish is thinking...";
-      msgArea.appendChild(t);
+      const tRow = document.createElement("div");
+      tRow.className = "catphis-msg-row";
+      const tIcon = document.createElement("div");
+      tIcon.className = "catphis-msg-icon"; tIcon.textContent = "🐾";
+      const tBubble = document.createElement("div");
+      tBubble.className = "catphis-msg typing";
+      [1, 2, 3].forEach(() => {
+        const d = document.createElement("div");
+        d.className = "catphis-dot";
+        tBubble.appendChild(d);
+      });
+      tRow.append(tIcon, tBubble);
+      msgArea.appendChild(tRow);
       msgArea.scrollTop = msgArea.scrollHeight;
 
-      const reply = await fetchChatResponse(text, riskScore);
-      
-      t.remove();
+      const minDelay = new Promise(r => setTimeout(r, 700 + Math.random() * 400));
+      const [reply] = await Promise.all([
+        fetchChatResponse(text, riskScore),
+        minDelay
+      ]);
+
+      tRow.remove();
       addMsg(reply, "bot");
-      
       conversationHistory.push({ role: "assistant", content: reply });
       saveHistory();
-
-      sendBtn.disabled = false;
+      // Unlock UI
       input.disabled = false;
+      sendBtn.disabled = false;
       input.focus();
     }
 
@@ -632,12 +925,32 @@
       const btn = document.createElement("button");
       btn.className = "catphis-quick-btn";
       btn.textContent = q;
-      btn.onclick = () => {
-        input.value = q;
-        send();
-      };
+      btn.onclick = () => { input.value = q; send(); };
       quickBtnsArea.appendChild(btn);
     });
+
+    // Report site chip
+    const reportBtn = document.createElement("button");
+    reportBtn.className = "catphis-quick-btn";
+    reportBtn.textContent = "🚩 Report site";
+    reportBtn.style.borderColor = "rgba(239,68,68,.3)";
+    reportBtn.style.color = "#fca5a5";
+    reportBtn.onclick = async () => {
+      reportBtn.disabled = true;
+      reportBtn.textContent = "Reporting...";
+      try {
+        await fetch(`${BACKEND}/report`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url: PAGE_URL, description: "Reported via CatPhish extension" })
+        });
+        showToast("✅ Site reported — thank you!");
+      } catch {
+        showToast("⚠️ Could not report (backend offline)", "rgba(245,158,11,.9)");
+      }
+      reportBtn.textContent = "🚩 Reported!";
+    };
+    quickBtnsArea.appendChild(reportBtn);
 
     sendBtn.onclick = send;
     input.onkeydown = (e) => { if (e.key === "Enter") send(); };
@@ -656,6 +969,10 @@
       else if (riskScore >= 40) glow.classList.add("warn");
       else glow.classList.add("safe");
     }
+
+    // Size constants — change here to resize everywhere
+    const IDLE_SIZE = "400px";
+    const DRAG_SIZE = "250px";
 
     // SVG container — try to use PNG images first, fall back to inline SVG
     const svgWrap = document.createElement("div");
@@ -685,10 +1002,12 @@
         svgWrap.innerHTML = SVG_IDLE;
       };
       imgEl.onload = () => {
-        usingImage = true;
-        // When using real PNG — make the wrap a bit wider for better look
-        catWrap.style.width = "130px";
-        svgWrap.style.width = "130px";
+        if (!usingImage) {
+          // First load only: mark as ready and apply idle size
+          usingImage = true;
+          catWrap.style.width = svgWrap.style.width = IDLE_SIZE;
+        }
+        // Subsequent onload calls (from setCatIdle/setCatDrag src swaps) — do nothing
       };
       svgWrap.appendChild(imgEl);
     } else {
@@ -729,13 +1048,14 @@
 
     function fallStep() {
       if (isDragging) return;
-      velocityY += 1.6; // gravity
+      velocityY += 1.6;
       translateY += velocityY;
       if (translateY >= 0) {
         translateY = 0;
         velocityY = 0;
         applyTransform();
         catWrap.classList.add("catphis-anim-idle");
+        catWrap.style.width = svgWrap.style.width = IDLE_SIZE;
         setCatIdle();
       } else {
         applyTransform();
@@ -751,6 +1071,7 @@
       startX = e.clientX - translateX;
       startY = e.clientY - translateY;
       catWrap.classList.remove("catphis-anim-idle");
+      catWrap.style.width = svgWrap.style.width = DRAG_SIZE;
       setCatDrag();
       e.preventDefault();
     });
@@ -768,14 +1089,18 @@
     document.addEventListener("mouseup", () => {
       if (!isDragging) return;
       isDragging = false;
+
       if (translateY < 0) {
         velocityY = 0;
         physicsReq = requestAnimationFrame(fallStep);
+        // size restored in fallStep when cat lands
       } else {
-        translateX = 0;
-        translateY = 0;
-        applyTransform();
+        if (translateY > 0) {
+          translateY = 0;
+          applyTransform();
+        }
         catWrap.classList.add("catphis-anim-idle");
+        catWrap.style.width = svgWrap.style.width = IDLE_SIZE;
         setCatIdle();
       }
     });
