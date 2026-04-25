@@ -810,9 +810,13 @@
       .catphis-size-medium .catphis-cat-wrap { transform: scale(1) !important; transform-origin: bottom right !important; }
       .catphis-size-large .catphis-cat-wrap { transform: scale(1.35) !important; transform-origin: bottom right !important; }
       
-      /* Avoid overlap when cat is large */
+      /* Adjust position based on scale */
       .catphis-size-large .catphis-chat { bottom: calc(100% + 64px) !important; }
       .catphis-size-large .catphis-bubble { bottom: calc(100% + 60px) !important; }
+      .catphis-size-medium .catphis-chat { bottom: calc(100% - 10px) !important; }
+      .catphis-size-medium .catphis-bubble { bottom: calc(100% - 10px) !important; }
+      .catphis-size-small .catphis-chat { bottom: calc(100% - 35px) !important; }
+      .catphis-size-small .catphis-bubble { bottom: calc(100% - 35px) !important; }
 
       /* Chat Themes */
       .catphis-theme-light { 
