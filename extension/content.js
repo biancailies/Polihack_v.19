@@ -815,8 +815,8 @@
       .catphis-size-large .catphis-bubble { bottom: calc(100% + 60px) !important; }
       .catphis-size-medium .catphis-chat { bottom: calc(100% - 10px) !important; }
       .catphis-size-medium .catphis-bubble { bottom: calc(100% - 10px) !important; }
-      .catphis-size-small .catphis-chat { bottom: calc(100% - 35px) !important; }
-      .catphis-size-small .catphis-bubble { bottom: calc(100% - 35px) !important; }
+      .catphis-size-small .catphis-chat { bottom: calc(100% - 60px) !important; }
+      .catphis-size-small .catphis-bubble { bottom: calc(100% - 60px) !important; }
 
       /* Chat Themes */
       .catphis-theme-light { 
