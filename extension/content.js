@@ -52,12 +52,50 @@
   }
 
   let elderlyModeEnabled = false;
-  chrome.storage.local.get("elderlyModeEnabled", (data) => {
+  let currentSettings = {
+    mascotVisible: true,
+    mascotSize: "medium",
+    chatTheme: "dark",
+    fontFamily: "inter",
+    fontSize: "medium"
+  };
+
+  chrome.storage.local.get(["elderlyModeEnabled", "catphishSettings"], (data) => {
     elderlyModeEnabled = !!data.elderlyModeEnabled;
+    if (data.catphishSettings) {
+      currentSettings = { ...currentSettings, ...data.catphishSettings };
+      applyCurrentSettings();
+    }
   });
+
+  function applyCurrentSettings() {
+    const root = document.getElementById(ROOT_ID);
+    if (!root) return;
+    const positioner = root.querySelector('.catphis-positioner');
+    const chat = root.querySelector('.catphis-chat');
+
+    if (positioner) {
+      positioner.classList.toggle('catphis-hidden', !currentSettings.mascotVisible);
+      positioner.classList.remove('catphis-size-small', 'catphis-size-medium', 'catphis-size-large');
+      positioner.classList.add(`catphis-size-${currentSettings.mascotSize}`);
+    }
+
+    if (chat) {
+      chat.classList.toggle('catphis-theme-light', currentSettings.chatTheme === 'light');
+      chat.classList.remove('catphis-font-inter', 'catphis-font-serif', 'catphis-font-mono');
+      chat.classList.add(`catphis-font-${currentSettings.fontFamily}`);
+      chat.classList.remove('catphis-text-small', 'catphis-text-medium', 'catphis-text-large');
+      chat.classList.add(`catphis-text-${currentSettings.fontSize}`);
+    }
+  }
+
   chrome.runtime.onMessage.addListener((msg) => {
     if (msg.type === "ELDERLY_MODE_CHANGED") {
       elderlyModeEnabled = !!msg.enabled;
+    }
+    if (msg.type === "CATPHISH_SETTINGS_CHANGED") {
+      currentSettings = msg.settings;
+      applyCurrentSettings();
     }
   });
 
@@ -745,6 +783,49 @@
         from { opacity:0; transform: translateX(-50%) translateY(8px); }
         to   { opacity:1; transform: translateX(-50%) translateY(0); }
       }
+
+      /* --- Customize appearance classes --- */
+      .catphis-hidden { display: none !important; }
+      
+      /* Mascot Sizes */
+      .catphis-size-small .catphis-cat-wrap { transform: scale(0.65) !important; transform-origin: bottom right !important; }
+      .catphis-size-medium .catphis-cat-wrap { transform: scale(1) !important; transform-origin: bottom right !important; }
+      .catphis-size-large .catphis-cat-wrap { transform: scale(1.35) !important; transform-origin: bottom right !important; }
+      
+      /* Avoid overlap when cat is large */
+      .catphis-size-large .catphis-chat { bottom: calc(100% + 64px) !important; }
+      .catphis-size-large .catphis-bubble { bottom: calc(100% + 60px) !important; }
+
+      /* Chat Themes */
+      .catphis-theme-light { 
+        background: rgba(255, 255, 255, 0.98) !important; 
+        border-color: rgba(0, 0, 0, 0.15) !important;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.1), 0 0 0 1px rgba(0,0,0,0.05) !important;
+      }
+      .catphis-theme-light .catphis-chat-header { background: #f8fafc !important; border-bottom: 1px solid #e2e8f0 !important; }
+      .catphis-theme-light .catphis-header-title { color: #0f172a !important; }
+      .catphis-theme-light .catphis-msg.bot { background: #f1f5f9 !important; color: #1e293b !important; border-color: #cbd5e1 !important; }
+      .catphis-theme-light .catphis-msg.user { background: #6d28d9 !important; color: #ffffff !important; }
+      .catphis-theme-light .catphis-input-area { background: #f8fafc !important; border-top: 1px solid #e2e8f0 !important; }
+      .catphis-theme-light #catphis-input { background: #ffffff !important; border: 1px solid #94a3b8 !important; color: #0f172a !important; }
+      .catphis-theme-light .catphis-quick-btn { 
+        background: #f1f5f9 !important; 
+        border: 1px solid #cbd5e1 !important; 
+        color: #334155 !important; 
+        font-weight: 600 !important;
+      }
+      .catphis-theme-light .catphis-quick-btn:hover { background: #e2e8f0 !important; }
+      .catphis-theme-light .catphis-chat-msg-area { color: #334155 !important; }
+
+      /* Font Families */
+      .catphis-font-inter .catphis-chat-msg-area, .catphis-font-inter #catphis-input { font-family: 'Inter', sans-serif !important; }
+      .catphis-font-serif .catphis-chat-msg-area, .catphis-font-serif #catphis-input { font-family: Georgia, 'Times New Roman', serif !important; }
+      .catphis-font-mono .catphis-chat-msg-area, .catphis-font-mono #catphis-input { font-family: 'Fira Code', 'Courier New', monospace !important; }
+
+      /* Text Sizes */
+      .catphis-text-small .catphis-chat-msg-area { font-size: 11px !important; }
+      .catphis-text-medium .catphis-chat-msg-area { font-size: 13px !important; }
+      .catphis-text-large .catphis-chat-msg-area { font-size: 16px !important; }
     `;
     document.head.appendChild(style);
   }
@@ -1583,6 +1664,9 @@
     positioner.append(bubble, chat, catWrap);
     root.append(positioner);
     document.body.append(root);
+
+    // Apply settings immediately after injection
+    applyCurrentSettings();
 
     // Watch for sensitive field focus
     document.addEventListener("focusin", (e) => {

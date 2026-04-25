@@ -391,6 +391,13 @@ if (dashboardBtn) {
   });
 }
 
+// ── Customize Appearance button ───────────────────────────────────────────────
+const customizeBtn = document.getElementById("customizeBtn");
+if (customizeBtn) {
+  customizeBtn.addEventListener("click", () => {
+    chrome.tabs.create({ url: chrome.runtime.getURL("customize.html") });
+  });
+}
 
 // ── Elderly mode init ──────────────────────────────────────────────────────────
 function applyElderlyMode(enabled) {

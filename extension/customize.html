@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CatPhish – Appearance Settings</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0b0d13;
+      --surface: #12151e;
+      --card: #191d28;
+      --border: rgba(255,255,255,0.07);
+      --t1: #edf0f7;
+      --t2: #7c859c;
+      --t3: #3d4459;
+      --brand: #7c3aed;
+      --brand-lt: #a78bfa;
+      --safe: #22c55e;
+      --warn: #f59e0b;
+      --danger: #ef4444;
+      --radius: 14px;
+      --ease: cubic-bezier(.4,0,.2,1);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { -webkit-font-smoothing: antialiased; }
+    body {
+      font-family: "Inter", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--t1);
+      font-size: 14px;
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    /* ── Nav ── */
+    .nav {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .nav-cat { font-size: 30px; }
+    .nav-title {
+      font-size: 20px;
+      font-weight: 900;
+      letter-spacing: -.5px;
+      background: linear-gradient(135deg, #a78bfa, #7c3aed);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .nav-sub { font-size: 12px; color: var(--t3); -webkit-text-fill-color: var(--t3); }
+
+    /* ── Page ── */
+    .page { max-width: 700px; margin: 0 auto; padding: 28px 20px 60px; display: flex; flex-direction: column; gap: 20px; }
+
+    /* ── Section card ── */
+    .section-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(255,255,255,.02);
+    }
+    .section-icon { font-size: 20px; }
+    .section-title { font-size: 14px; font-weight: 700; }
+    .section-desc { font-size: 11px; color: var(--t3); margin-top: 1px; }
+    .section-body { padding: 18px 20px; display: flex; flex-direction: column; gap: 16px; }
+
+    /* ── Toggle row ── */
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .toggle-label { font-size: 13px; font-weight: 600; }
+    .toggle-hint  { font-size: 11px; color: var(--t3); }
+
+    .toggle-switch {
+      position: relative;
+      display: inline-block;
+      width: 44px;
+      height: 24px;
+      flex-shrink: 0;
+    }
+    .toggle-switch input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider {
+      position: absolute;
+      inset: 0;
+      background: #3d4459;
+      border-radius: 24px;
+      cursor: pointer;
+      transition: background .2s;
+    }
+    .toggle-slider::before {
+      content: "";
+      position: absolute;
+      width: 18px; height: 18px;
+      left: 3px; bottom: 3px;
+      background: #fff;
+      border-radius: 50%;
+      transition: transform .2s;
+    }
+    .toggle-switch input:checked + .toggle-slider { background: #7c3aed; }
+    .toggle-switch input:checked + .toggle-slider::before { transform: translateX(20px); }
+
+    /* ── Option group ── */
+    .option-label { font-size: 12px; font-weight: 600; color: var(--t2); margin-bottom: 8px; }
+    .option-group {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .option-btn {
+      flex: 1;
+      min-width: 80px;
+      padding: 10px 8px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,.03);
+      color: var(--t2);
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      text-align: center;
+      transition: all .2s var(--ease);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+    .option-btn:hover { border-color: var(--brand-lt); color: var(--brand-lt); background: rgba(124,58,237,.08); }
+    .option-btn.active { border-color: var(--brand-lt); color: var(--brand-lt); background: rgba(124,58,237,.2); }
+    .option-btn .opt-icon { font-size: 18px; }
+    .option-btn .opt-preview { font-size: 10px; opacity: .7; }
+
+    /* Font previews */
+    .opt-inter { font-family: "Inter", sans-serif; }
+    .opt-serif { font-family: Georgia, serif; }
+    .opt-mono  { font-family: "Courier New", monospace; }
+
+    /* ── Save notice ── */
+    .save-notice {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      background: rgba(34,197,94,.08);
+      border: 1px solid rgba(34,197,94,.2);
+      border-radius: 8px;
+      font-size: 12px;
+      color: var(--safe);
+      opacity: 0;
+      transition: opacity .3s;
+    }
+    .save-notice.show { opacity: 1; }
+
+    /* ── Preview cat ── */
+    .preview-area {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background: rgba(255,255,255,.02);
+      border-radius: 10px;
+      border: 1px dashed var(--border);
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+    .preview-cat { font-size: 48px; transition: font-size .3s; }
+    .preview-cat.size-small  { font-size: 32px; }
+    .preview-cat.size-medium { font-size: 48px; }
+    .preview-cat.size-large  { font-size: 68px; }
+    .preview-chat-box {
+      border-radius: 10px;
+      padding: 12px 16px;
+      font-size: 13px;
+      max-width: 220px;
+      transition: all .3s;
+    }
+    .preview-chat-box.dark  { background: #191d28; color: #edf0f7; border: 1px solid rgba(255,255,255,.1); }
+    .preview-chat-box.light { background: #f8f9fa; color: #1a1a2e; border: 1px solid rgba(0,0,0,.12); }
+    .preview-chat-box.font-inter { font-family: "Inter", sans-serif; }
+    .preview-chat-box.font-serif { font-family: Georgia, serif; }
+    .preview-chat-box.font-mono  { font-family: "Courier New", monospace; }
+    .preview-chat-box.text-small  { font-size: 11px; }
+    .preview-chat-box.text-medium { font-size: 13px; }
+    .preview-chat-box.text-large  { font-size: 16px; }
+  </style>
+</head>
+<body>
+
+<nav class="nav">
+  <span class="nav-cat">🐱</span>
+  <div>
+    <div class="nav-title">CatPhish Appearance</div>
+    <div class="nav-sub">Customize how the assistant looks and feels</div>
+  </div>
+</nav>
+
+<div class="page">
+
+  <!-- Save notice -->
+  <div class="save-notice" id="saveNotice">✅ Settings saved and applied!</div>
+
+  <!-- Live Preview -->
+  <div class="section-card">
+    <div class="section-header">
+      <span class="section-icon">👁️</span>
+      <div>
+        <div class="section-title">Live Preview</div>
+        <div class="section-desc">Changes appear here instantly</div>
+      </div>
+    </div>
+    <div class="section-body">
+      <div class="preview-area">
+        <div class="preview-cat size-medium" id="previewCat">🐱</div>
+        <div class="preview-chat-box dark font-inter text-medium" id="previewChat">
+          <b>CatPhish</b><br>
+          Meow! I'm watching for scams and phishing sites. Stay safe! 🛡️
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mascot Visibility -->
+  <div class="section-card">
+    <div class="section-header">
+      <span class="section-icon">🐱</span>
+      <div>
+        <div class="section-title">Mascot Visibility</div>
+        <div class="section-desc">Show or hide the cat on screen (extension stays active)</div>
+      </div>
+    </div>
+    <div class="section-body">
+      <div class="toggle-row">
+        <div>
+          <div class="toggle-label">Show cat on screen</div>
+          <div class="toggle-hint">When off, the cat is hidden but scanning continues</div>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="mascotVisible" checked>
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mascot Size -->
+  <div class="section-card">
+    <div class="section-header">
+      <span class="section-icon">📐</span>
+      <div>
+        <div class="section-title">Mascot Size</div>
+        <div class="section-desc">Resize the cat on the page</div>
+      </div>
+    </div>
+    <div class="section-body">
+      <div class="option-group" id="mascotSizeGroup">
+        <button class="option-btn" data-val="small">
+          <span class="opt-icon">🐱</span>
+          <span>Small</span>
+          <span class="opt-preview">Compact</span>
+        </button>
+        <button class="option-btn active" data-val="medium">
+          <span class="opt-icon">🐱</span>
+          <span>Medium</span>
+          <span class="opt-preview">Default</span>
+        </button>
+        <button class="option-btn" data-val="large">
+          <span class="opt-icon">🐱</span>
+          <span>Large</span>
+          <span class="opt-preview">Prominent</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chat Theme -->
+  <div class="section-card">
+    <div class="section-header">
+      <span class="section-icon">🌙</span>
+      <div>
+        <div class="section-title">Chat Theme</div>
+        <div class="section-desc">Switch between dark and light chatbot</div>
+      </div>
+    </div>
+    <div class="section-body">
+      <div class="option-group" id="chatThemeGroup">
+        <button class="option-btn active" data-val="dark">
+          <span class="opt-icon">🌙</span>
+          <span>Dark</span>
+          <span class="opt-preview">Default</span>
+        </button>
+        <button class="option-btn" data-val="light">
+          <span class="opt-icon">☀️</span>
+          <span>Light</span>
+          <span class="opt-preview">Bright</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Font Family -->
+  <div class="section-card">
+    <div class="section-header">
+      <span class="section-icon">🔤</span>
+      <div>
+        <div class="section-title">Font Style</div>
+        <div class="section-desc">Choose the font used in the chatbot</div>
+      </div>
+    </div>
+    <div class="section-body">
+      <div class="option-group" id="fontFamilyGroup">
+        <button class="option-btn active opt-inter" data-val="inter">
+          <span class="opt-icon" style="font-family:'Inter',sans-serif">Aa</span>
+          <span>Modern</span>
+          <span class="opt-preview opt-inter">Inter</span>
+        </button>
+        <button class="option-btn opt-serif" data-val="serif">
+          <span class="opt-icon" style="font-family:Georgia,serif">Aa</span>
+          <span>Classic</span>
+          <span class="opt-preview opt-serif">Serif</span>
+        </button>
+        <button class="option-btn opt-mono" data-val="mono">
+          <span class="opt-icon" style="font-family:'Courier New',monospace">Aa</span>
+          <span>Techy</span>
+          <span class="opt-preview opt-mono">Mono</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Font Size -->
+  <div class="section-card">
+    <div class="section-header">
+      <span class="section-icon">📏</span>
+      <div>
+        <div class="section-title">Text Size</div>
+        <div class="section-desc">Adjust the text size in the chatbot</div>
+      </div>
+    </div>
+    <div class="section-body">
+      <div class="option-group" id="fontSizeGroup">
+        <button class="option-btn" data-val="small">
+          <span class="opt-icon" style="font-size:12px">Aa</span>
+          <span>Small</span>
+          <span class="opt-preview">Compact</span>
+        </button>
+        <button class="option-btn active" data-val="medium">
+          <span class="opt-icon" style="font-size:16px">Aa</span>
+          <span>Medium</span>
+          <span class="opt-preview">Default</span>
+        </button>
+        <button class="option-btn" data-val="large">
+          <span class="opt-icon" style="font-size:22px">Aa</span>
+          <span>Large</span>
+          <span class="opt-preview">Easy Read</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="customize.js"></script>
+</body>
+</html>

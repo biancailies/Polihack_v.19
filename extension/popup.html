@@ -352,6 +352,14 @@
     }
     .btn-dashboard:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 5px 20px rgba(124,58,237,.5); }
 
+    .btn-customize {
+      background: linear-gradient(135deg, #0e7490, #06b6d4);
+      color: #fff;
+      box-shadow: 0 3px 14px rgba(6,182,212,.3);
+      font-size: 12px;
+    }
+    .btn-customize:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 5px 20px rgba(6,182,212,.45); }
+
     .spinner {
       width:13px; height:13px;
       border:2px solid rgba(255,255,255,.25);
@@ -642,8 +650,13 @@
 </footer>
 
 <!-- Family Dashboard button -->
-<div style="padding: 0 10px 8px; display:flex;">
+<div style="padding: 0 10px 4px; display:flex;">
   <button class="btn btn-dashboard" id="dashboardBtn" style="flex:1;">🛡️ Open Family Safety Dashboard</button>
+</div>
+
+<!-- Customize Appearance button -->
+<div style="padding: 0 10px 8px; display:flex;">
+  <button class="btn btn-customize" id="customizeBtn" style="flex:1;">🎨 Customize Appearance</button>
 </div>
 
 <!-- Elderly toggle -->
