@@ -244,6 +244,48 @@
     .footer-note{ font-size:11px;color:var(--t3);text-align:center; }
 
     .hidden{ display:none!important; }
+
+    /* ── Elderly Protection Mode ── */
+    body.elderly-mode { font-size: 18px; }
+    body.elderly-mode .title { font-size: 26px; }
+    body.elderly-mode .subtitle { font-size: 16px; line-height: 1.7; }
+    body.elderly-mode .reasons-list li { font-size: 16px; padding: 10px 14px; line-height: 1.6; }
+    body.elderly-mode .btn { font-size: 17px; padding: 18px 24px; border-radius: 14px; }
+    body.elderly-mode .score-val { font-size: 28px; }
+    body.elderly-mode .url-txt { font-size: 14px; }
+
+    .elderly-banner {
+      display: none;
+      width: 100%;
+      background: linear-gradient(135deg, rgba(109,40,217,.3), rgba(124,58,237,.15));
+      border: 2px solid rgba(167,139,250,.5);
+      border-radius: 14px;
+      padding: 14px 18px;
+      font-size: 15px;
+      font-weight: 600;
+      color: #c4b5fd;
+      text-align: center;
+      line-height: 1.6;
+    }
+    body.elderly-mode .elderly-banner { display: block; }
+
+    .btn-family {
+      display: none;
+      background: linear-gradient(135deg, #6d28d9, #a78bfa);
+      color: #fff;
+      border: none;
+      font-size: 17px;
+      padding: 18px;
+      border-radius: 14px;
+      cursor: pointer;
+      font-weight: 700;
+      font-family: inherit;
+      width: 100%;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    body.elderly-mode .btn-family { display: flex; }
   </style>
 </head>
 <body>
@@ -299,9 +341,16 @@
     <span>Proceeding may expose your credentials and personal data to attackers. Only continue if you are absolutely certain this site is safe.</span>
   </div>
 
+  <!-- Elderly Mode Banner -->
+  <div class="elderly-banner" id="elderlyBanner">
+    👴 CatPhish stopped this page from loading because it may be trying to steal your password or money.
+    <br><strong>Do NOT click anything. Close this page and ask someone you trust for help.</strong>
+  </div>
+
   <!-- Actions -->
   <div class="actions">
     <button class="btn btn-safe" id="goBackBtn">✅ Go back to safety</button>
+    <button class="btn btn-family" id="familyBtn">👨‍👩‍👧 Ask a family member</button>
     <div class="btn-row">
       <button class="btn btn-copy" id="copyBtn">📋 Copy URL</button>
       <button class="btn btn-danger" id="proceedBtn">⚠️ Open anyway</button>

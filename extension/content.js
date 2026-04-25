@@ -23,6 +23,132 @@
   const TEXT_LIMIT = 5000;
   const STYLES_ID = "__catphis_styles__";
   const ROOT_ID = "catphis-root";
+  const SENSITIVE_KEYWORDS = [
+    "password", "login", "sign in", "account", "otp", "2fa", "code", "pin", 
+    "card number", "cvv", "bank login", "verify your account", "credit card",
+    "billing", "bank account", "iban", "wire transfer", "crypto wallet", 
+    "gift card", "payment failed", "refund", "invoice", "customs fee", "delivery fee",
+    "western union", "moneygram", "bitcoin", "ethereum", "usdt"
+  ];
+
+  // ── Elderly Protection Mode ──
+  let elderlyModeEnabled = false;
+  chrome.storage.local.get("elderlyModeEnabled", (data) => {
+    elderlyModeEnabled = !!data.elderlyModeEnabled;
+  });
+  chrome.runtime.onMessage.addListener((msg) => {
+    if (msg.type === "ELDERLY_MODE_CHANGED") {
+      elderlyModeEnabled = !!msg.enabled;
+    }
+  });
+
+  function simplifyForElderly(technicalText) {
+    const map = [
+      [/credential|password|login|sign.?in/i, "This page is asking for your password — be careful."],
+      [/urgent|immediate|expire|suspend|action required|locked/i, "The message is trying to rush you — that’s a scammer trick."],
+      [/brand|impersonat|mimic/i, "Someone is pretending to be a company like PayPal or Google."],
+      [/mismatch|spoofed/i, "A link here goes somewhere different than it pretends."],
+      [/shortened URL/i, "A link is hidden and could lead anywhere dangerous."],
+      [/obfuscat|lookalike|typosquat/i, "A website address looks fake or has a spelling trick."],
+      [/domain/i, "The website address looks suspicious."],
+      [/payment|bank|card|iban|wire|money|crypto|gift.?card/i, "This page is asking for money or bank details. Please ask a trusted person before continuing."],
+    ];
+    for (const [pat, plain] of map) {
+      if (pat.test(technicalText)) return plain;
+    }
+    return technicalText;
+  }
+
+  // ── Trusted Family Contact Helper ──
+  function buildFamilyMessage({ type, riskScore, verdict, reason, link }) {
+    return new Promise((resolve) => {
+      chrome.storage.local.get(["trustedContactName", "trustedContactInfo"], (data) => {
+        const name = data.trustedContactName || "family member";
+        const msg = `Hi ${name}, can you check this for me? CatPhish says it may be unsafe.\n\nType: ${type}\nRisk: ${riskScore}/100\nVerdict: ${verdict}\nReason: ${reason}\nLink/page: ${link}`;
+        resolve({ msg, info: data.trustedContactInfo || "" });
+      });
+    });
+  }
+
+  async function showFamilyShareOverlay({ type, riskScore, verdict, reason, link }) {
+    const { msg, info } = await buildFamilyMessage({ type, riskScore, verdict, reason, link });
+
+    // Remove existing overlay if any
+    document.getElementById("__catphis_family_overlay")?.remove();
+
+    const overlay = document.createElement("div");
+    overlay.id = "__catphis_family_overlay";
+    overlay.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:2147483647;display:flex;align-items:center;justify-content:center;font-family:Inter,system-ui,sans-serif";
+
+    const looksLikeEmail = info.includes("@");
+    const looksLikePhone = /^[+\d\s\-().]{6,}$/.test(info);
+    const mailHref = looksLikeEmail
+      ? `mailto:${info}?subject=${encodeURIComponent("CatPhish: Safety check needed")}&body=${encodeURIComponent(msg)}`
+      : null;
+    const waHref = looksLikePhone
+      ? `https://wa.me/${info.replace(/[\s\-().]/g, "")}?text=${encodeURIComponent(msg)}`
+      : null;
+
+    async function sendFamilyAlertBackend({ recipient, message, url, riskScore, verdict }) {
+      try {
+        const response = await fetch(`${BACKEND}/send-family-alert`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ recipient, message, url, risk_score: riskScore, verdict })
+        });
+        return await response.json();
+      } catch (e) {
+        console.error("[CatPhish] Alert failed:", e);
+        return null;
+      }
+    }
+
+    overlay.innerHTML = `
+      <div style="background:#12151e;border:1px solid rgba(124,58,237,.5);border-radius:18px;padding:24px;max-width:340px;width:90%;display:flex;flex-direction:column;gap:12px;box-shadow:0 24px 72px rgba(0,0,0,.85)">
+        <div style="font-size:15px;font-weight:800;color:#a78bfa">👨‍👩‍👧 Ask a family member</div>
+        <div id="__catphis_fam_msg" style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:12px;font-size:12px;color:#7c859c;line-height:1.7;white-space:pre-wrap;word-break:break-all;max-height:160px;overflow-y:auto">${msg}</div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          ${looksLikeEmail ? `<button id="__catphis_fam_send_now" style="background:linear-gradient(135deg,#7c3aed,#9333ea);color:#fff;border:none;border-radius:8px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">🚀 Send Alert Now</button>` : ""}
+          <button id="__catphis_fam_copy" style="background:rgba(255,255,255,.05);color:#fff;border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">📋 Copy message</button>
+          ${mailHref ? `<a href="${mailHref}" id="__catphis_fam_mail_link" target="_blank" style="background:rgba(34,197,94,.1);color:#22c55e;border:1px solid rgba(34,197,94,.2);border-radius:8px;padding:11px;font-size:13px;font-weight:700;text-align:center;text-decoration:none;display:block">✉️ Use Email App</a>` : ""}
+          ${waHref ? `<a href="${waHref}" target="_blank" style="background:rgba(37,211,102,.1);color:#25d366;border:1px solid rgba(37,211,102,.2);border-radius:8px;padding:11px;font-size:13px;font-weight:700;text-align:center;text-decoration:none;display:block">💬 Send via WhatsApp</a>` : ""}
+          <button id="__catphis_fam_close" style="background:rgba(255,255,255,.05);color:#7c859c;border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">❌ Close</button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    const sendBtn = document.getElementById("__catphis_fam_send_now");
+    if (sendBtn) {
+      sendBtn.addEventListener("click", async () => {
+        sendBtn.disabled = true;
+        sendBtn.textContent = "⌛ Sending...";
+        const result = await sendFamilyAlertBackend({ recipient: info, message: msg, url: link, riskScore, verdict });
+        if (result && result.status === "success") {
+          sendBtn.style.background = "#22c55e";
+          sendBtn.textContent = "✅ Alert Sent!";
+          setTimeout(() => overlay.remove(), 2000);
+        } else {
+          sendBtn.disabled = false;
+          sendBtn.style.background = "#ef4444";
+          sendBtn.textContent = "❌ Failed. Use Copy.";
+        }
+      });
+    }
+
+    document.getElementById("__catphis_fam_copy").addEventListener("click", () => {
+      navigator.clipboard.writeText(msg).then(() => {
+        document.getElementById("__catphis_fam_copy").textContent = "✅ Copied! Paste it to someone you trust.";
+        setTimeout(() => { document.getElementById("__catphis_fam_copy").innerHTML = "📋 Copy message"; }, 2500);
+      }).catch(() => window.prompt("Copy this message:", msg));
+    });
+    document.getElementById("__catphis_fam_close").addEventListener("click", () => overlay.remove());
+    overlay.addEventListener("click", (e) => { if (e.target === overlay) overlay.remove(); });
+  }
+
+  // Expose globally so chatbot quick button can call it
+  window.__catphisAskFamily = showFamilyShareOverlay;
 
   function extractPageText() {
     if (!document.body) return "";
@@ -73,6 +199,35 @@
         backendOnline,
       },
     });
+  }
+
+  function logFamilySafetyEvent(type, details) {
+    chrome.storage.local.get("familySafetyLog", (data) => {
+      const log = data.familySafetyLog || [];
+      log.push({
+        timestamp: Date.now(),
+        url: PAGE_URL,
+        type,
+        details
+      });
+      // Keep last 100 events
+      if (log.length > 100) log.shift();
+      chrome.storage.local.set({ familySafetyLog: log });
+    });
+  }
+
+  function detectSensitiveRequests() {
+    const text = extractPageText().toLowerCase();
+    const hasPasswordInput = document.querySelector('input[type="password"]') !== null;
+    const hasPaymentInput = document.querySelector('input[name*="card"], input[id*="card"], input[name*="cvv"], input[id*="cvv"], input[name*="iban"], input[id*="iban"]') !== null;
+    const foundKeywords = SENSITIVE_KEYWORDS.filter(k => text.includes(k));
+    
+    return {
+      hasPasswordInput,
+      hasPaymentInput,
+      foundKeywords,
+      isSensitive: hasPasswordInput || hasPaymentInput || foundKeywords.length > 0
+    };
   }
 
   // ═══════════════════════════════════════════════════════════════════════
@@ -571,24 +726,24 @@
 
   async function loadHistory() {
     return new Promise(res => {
-        chrome.storage.local.get("chatHistory", (data) => {
-            const h = data.chatHistory || {};
-            if (h.url === PAGE_URL && Array.isArray(h.messages)) {
-                conversationHistory = h.messages;
-            } else {
-                conversationHistory = [];
-            }
-            res();
-        });
+      chrome.storage.local.get("chatHistory", (data) => {
+        const h = data.chatHistory || {};
+        if (h.url === PAGE_URL && Array.isArray(h.messages)) {
+          conversationHistory = h.messages;
+        } else {
+          conversationHistory = [];
+        }
+        res();
+      });
     });
   }
 
   function saveHistory() {
     if (conversationHistory.length > 10) {
-        conversationHistory = conversationHistory.slice(-10);
+      conversationHistory = conversationHistory.slice(-10);
     }
     chrome.storage.local.set({
-        chatHistory: { url: PAGE_URL, messages: conversationHistory }
+      chatHistory: { url: PAGE_URL, messages: conversationHistory }
     });
   }
 
@@ -608,15 +763,15 @@
           forms: extractForms(),
         };
         const analyzeRes = await fetch(`${BACKEND}/analyze`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload)
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
         });
         if (analyzeRes.ok) {
-            analysisResult = await analyzeRes.json();
-            saveResult(analysisResult, true);
+          analysisResult = await analyzeRes.json();
+          saveResult(analysisResult, true);
         } else {
-            analysisResult = { risk_score: riskScore || 0, verdict: "Unknown", reasons: [] };
+          analysisResult = { risk_score: riskScore || 0, verdict: "Unknown", reasons: [] };
         }
       }
 
@@ -685,10 +840,19 @@
         ? `📊 Risk score: ${score}/100. ${score >= 70 ? '⛔ Dangerous — leave now!' : score >= 40 ? '⚠️ Suspicious — be cautious.' : '✅ Looks clean.'}`
         : "Still analyzing this page... ask me again in a moment!";
 
-    if (m.includes("password") || m.includes("parola") || m.includes("login") || m.includes("credentials"))
-      return score >= 40
-        ? `🚨 Do NOT enter your password here! Risk score is ${score}/100.${reasonList}`
-        : "This page seems safe for login, but always double-check the URL bar 🔒";
+    if (m.includes("password") || m.includes("parola") || m.includes("login") || m.includes("credentials") || m.includes("otp") || m.includes("code")) {
+      let advice = "";
+      if (score >= 70) {
+        advice = "🚨 **STOP! Do NOT enter your password here.** This page is extremely dangerous and is likely trying to steal your credentials.";
+      } else if (score >= 40) {
+        advice = "⚠️ **Warning: I don't recommend entering your password here.** This page has suspicious signals. If you must login, go to the official website directly by typing the URL yourself.";
+      } else {
+        advice = "✅ This login page looks low-risk, but always double-check the domain name in the address bar before entering your password.";
+      }
+      
+      const miniAdvice = "\n\n💡 **Safety Tips:**\n• Use a password manager to store and fill your logins.\n• Never share OTP or 2FA codes with anyone.\n• If a link feels 'urgent', it's usually a scam.\n• Check that the website address is spelled correctly.";
+      return advice + miniAdvice;
+    }
 
     if (m.includes("report") || m.includes("flag"))
       return "Use the '🚩 Report Site' button below to report this page to our team!";
@@ -697,11 +861,25 @@
       return score >= 70
         ? "⛔ Leave this page immediately! Don't click anything or enter any info."
         : score >= 40
-        ? "⚠️ Be very careful. Avoid entering personal data. You can also report it below."
-        : "Looks okay! But always verify the URL and look for HTTPS 🔐";
+          ? "⚠️ Be very careful. Avoid entering personal data. You can also report it below."
+          : "Looks okay! But always verify the URL and look for HTTPS 🔐";
 
     if (m.includes("hello") || m.includes("hi") || m.includes("salut") || m.includes("hey"))
       return "Meow! 🐾 I'm CatPhish, your anti-phishing guardian. Ask me anything about this page!";
+
+    if (m.includes("payment") || m.includes("bank") || m.includes("card") || m.includes("money") || m.includes("crypto") || m.includes("pay")) {
+      let advice = "";
+      if (score >= 70) {
+        advice = "🚨 **STOP! Do NOT enter payment or bank details here.** This page is extremely risky and shows clear signs of financial fraud.";
+      } else if (score >= 40) {
+        advice = "⚠️ **Be very careful.** This page is asking for payment information but has suspicious signals. Scammers often use 'customs fees' or 'unpaid delivery' tricks.";
+      } else {
+        advice = "✅ This payment page looks low-risk, but always check the domain name and ensure the site uses a secure connection (HTTPS) before paying.";
+      }
+      
+      const financialAdvice = "\n\n💡 **Financial Safety Tips:**\n• Avoid paying via Wire Transfer, Western Union, or Gift Cards — these are common scam methods.\n• Check for spelling errors on the page.\n• Verify the 'customs fee' or 'delivery' directly on the official carrier's website.";
+      return advice + financialAdvice;
+    }
 
     const defaults = [
       `I'm actively monitoring this page (score: ${score}/100) 👀`,
@@ -871,6 +1049,8 @@
     const quickQuestions = [
       "Scan this email",
       "Is this safe?",
+      "Can I enter my password?",
+      "Is payment safe here?",
       "Why is this email risky?",
       "What should I do?"
     ];
@@ -1054,11 +1234,10 @@
     function handleScamResult(result) {
         chrome.storage.local.set({ lastMessageAnalysis: result });
         
-        // Update glow
-        glow.className = "catphis-glow";
-        if (result.risk_score >= 70) glow.classList.add("danger");
-        else if (result.risk_score >= 40) glow.classList.add("warn");
-        else glow.classList.add("safe");
+        // Update visuals dynamically
+        if (window.__catphisUpdateVisuals) {
+            window.__catphisUpdateVisuals(result.risk_score);
+        }
 
         // Send a chat message
         const chatMsg = `I checked the message. Verdict: **${result.verdict}** (Score: ${result.risk_score}/100).\n\nAdvice: ${result.advice}`;
@@ -1214,25 +1393,34 @@
     const catWrap = document.createElement("div");
     catWrap.className = "catphis-cat-wrap catphis-anim-idle";
 
+    const isContextSpecific = window.location.hostname.includes("mail.google.com") || window.location.hostname.includes("web.whatsapp.com");
+    const visualRiskScore = isContextSpecific ? 0 : riskScore;
+
     const glow = document.createElement("div");
     glow.className = "catphis-glow";
-    if (riskScore != null) {
-      if (riskScore >= 70) glow.classList.add("danger");
-      else if (riskScore >= 40) glow.classList.add("warn");
+    if (visualRiskScore != null) {
+      if (visualRiskScore >= 70) glow.classList.add("danger");
+      else if (visualRiskScore >= 40) glow.classList.add("warn");
       else glow.classList.add("safe");
     }
 
     // Size constants — change here to resize everywhere
-    const IDLE_SIZE = "400px";
-    const DRAG_SIZE = "250px";
+    const IDLE_SIZE = "210px";
+    const DRAG_SIZE = "300px";
 
     // SVG container — try to use PNG images first, fall back to inline SVG
     const svgWrap = document.createElement("div");
     svgWrap.className = "catphis-cat-svg-wrap";
 
     // Try extension image first; onerror falls back to embedded SVG
-    const initImgUrl = (() => {
-      try { return chrome.runtime.getURL("images/cat_idle.png"); } catch { return null; }
+    let idleFilename = "cat_idle.png";
+    if (visualRiskScore != null) {
+      if (visualRiskScore >= 70) idleFilename = "cat_red.png";
+      else if (visualRiskScore >= 40) idleFilename = "cat_yellow.png";
+    }
+
+    let initImgUrl = (() => {
+      try { return chrome.runtime.getURL("images/" + idleFilename); } catch { return null; }
     })();
     const dragImgUrl = (() => {
       try { return chrome.runtime.getURL("images/cat_drag.png"); } catch { return null; }
@@ -1273,6 +1461,35 @@
         svgWrap.innerHTML = SVG_IDLE;
       }
     }
+
+    // Expose visual updater for context-specific scans (Gmail/WhatsApp)
+    window.__catphisUpdateVisuals = (score, isLoading = false) => {
+      glow.className = "catphis-glow";
+      if (isLoading) {
+        glow.classList.add("loading");
+      } else {
+        if (score >= 70) glow.classList.add("danger");
+        else if (score >= 40) glow.classList.add("warn");
+        else glow.classList.add("safe");
+      }
+
+      let newIdleFilename = "cat_idle.png";
+      if (!isLoading && score != null) {
+        if (score >= 70) newIdleFilename = "cat_red.png";
+        else if (score >= 40) newIdleFilename = "cat_yellow.png";
+      }
+
+      const newUrl = (() => {
+        try { return chrome.runtime.getURL("images/" + newIdleFilename); } catch { return null; }
+      })();
+
+      if (newUrl) {
+        initImgUrl = newUrl;
+        if (!isDragging && usingImage && imgEl) {
+          imgEl.src = initImgUrl;
+        }
+      }
+    };
     function setCatDrag() {
       if (usingImage && imgEl && dragImgUrl) {
         imgEl.src = dragImgUrl;
@@ -1285,6 +1502,48 @@
     positioner.append(bubble, chat, catWrap);
     root.append(positioner);
     document.body.append(root);
+
+    // Watch for sensitive field focus
+    document.addEventListener("focusin", (e) => {
+      const name = e.target.name?.toLowerCase() || "";
+      const id = e.target.id?.toLowerCase() || "";
+      const isPassword = e.target.type === "password";
+      const isOTP = name.includes("otp") || id.includes("otp") || name.includes("code") || id.includes("code");
+      const isPayment = name.includes("card") || id.includes("card") || name.includes("cvv") || id.includes("cvv") || name.includes("iban") || id.includes("iban") || name.includes("bank") || id.includes("bank");
+
+      if (e.target.tagName === "INPUT" && (isPassword || isOTP || isPayment)) {
+        const score = riskScore || 0;
+        if (score >= 40) {
+          if (isPayment) {
+            bubble.textContent = score >= 70 ? "⛔ STOP! Don't enter payment details!" : "⚠️ Caution: Suspicious page for payment.";
+          } else {
+            bubble.textContent = score >= 70 ? "⛔ STOP! High risk! Don't type your password!" : "⚠️ Caution: Suspicious page for a password.";
+          }
+          
+          bubble.style.borderColor = score >= 70 ? "rgba(239,68,68,.6)" : "rgba(245,158,11,.5)";
+          bubble.style.display = "block";
+          bubble.style.opacity = "1";
+          
+          logFamilySafetyEvent(isPayment ? "payment_input_focus" : "password_input_focus", {
+            risk_score: score,
+            element_id: id,
+            element_name: name
+          });
+
+          // Show chat if not open
+          if (!chat.classList.contains("open")) {
+            setTimeout(() => {
+                chat.classList.add("open");
+                const typeText = isPayment ? "payment or bank details" : "a password or code";
+                const elderlyText = elderlyModeEnabled ? "\n\n👴 Elderly Mode: This page is asking for money. Please ask for help." : "";
+                addMsg(`I noticed you're about to enter ${typeText}. My analysis says this page is ${score >= 70 ? "DANGEROUS" : "SUSPICIOUS"}. Please be very careful!${elderlyText}`, "bot");
+            }, 500);
+          }
+        } else {
+            logFamilySafetyEvent(isPayment ? "payment_input_focus_low_risk" : "password_input_focus_low_risk", { risk_score: score });
+        }
+      }
+    }, true);
 
     // ── Physics & drag
     let isDragging = false;
@@ -1320,11 +1579,23 @@
       isDragging = true;
       hasMoved = false;
       if (physicsReq) { cancelAnimationFrame(physicsReq); physicsReq = null; }
-      startX = e.clientX - translateX;
-      startY = e.clientY - translateY;
+
       catWrap.classList.remove("catphis-anim-idle");
       catWrap.style.width = svgWrap.style.width = DRAG_SIZE;
       setCatDrag();
+
+      // Align mouse to the "scruff" (middle-top) of the newly sized dragged cat
+      const rect = catWrap.getBoundingClientRect();
+      const grabX = rect.left + rect.width / 2;
+      const grabY = rect.top + 20; // 20px down from the very top
+
+      translateX += (e.clientX - grabX);
+      translateY += (e.clientY - grabY);
+
+      startX = e.clientX - translateX;
+      startY = e.clientY - translateY;
+
+      applyTransform();
       e.preventDefault();
     });
 
@@ -1642,35 +1913,50 @@
   }
 
   function updateEmailRiskUI(result, isLoading = false) {
-    const glow = document.querySelector('.catphis-glow');
-    if (!glow) return;
-    glow.className = "catphis-glow";
-    if (isLoading) {
-        glow.classList.add("loading");
-    } else {
-        if (result.risk_score >= 70) glow.classList.add("danger");
-        else if (result.risk_score >= 40) glow.classList.add("warn");
-        else glow.classList.add("safe");
+    if (window.__catphisUpdateVisuals) {
+        window.__catphisUpdateVisuals(result ? result.risk_score : 0, isLoading);
     }
   }
 
   function addEmailScanMessage(result, source, emailData) {
     if (!window.__catphisAddMsg) return;
     let msg = "";
+
+    const isElderly = elderlyModeEnabled;
     
-    if (emailData && emailData.subject) {
+    if (emailData && emailData.subject && !isElderly) {
         msg += `[Scanning: "${emailData.subject.substring(0, 30)}..."]\n`;
     }
 
-    if (source === "local_fallback") {
+    if (source === "local_fallback" && !isElderly) {
         msg += "I did a quick local scan first. I’ll update if deeper analysis finds more.\n";
     }
-    if (result.risk_score < 40) {
-        msg += "This email looks mostly safe. I did not find strong phishing signals, but still check links before clicking. ✅";
-    } else if (result.risk_score < 70) {
-        msg += `This email looks suspicious. I found signs like: ${result.reasons.slice(0,2).join(', ')}. Be careful before clicking links. ⚠️`;
+
+    const sensitive = detectSensitiveRequests();
+    if (sensitive.isSensitive && result.risk_score >= 40) {
+        msg += "⚠️ **Warning:** This email is asking for sensitive information (password/OTP/PIN). Given the risk score, do NOT enter any details.\n";
+        logFamilySafetyEvent("sensitive_email_detected", { risk_score: result.risk_score, keywords: sensitive.foundKeywords });
+    }
+
+    if (isElderly) {
+        // Simple plain-language messages for elderly mode
+        if (result.risk_score < 40) {
+            msg = "✅ This email looks safe. I did not find anything worrying. But still be careful before clicking links.";
+        } else if (result.risk_score < 70) {
+            const topReason = simplifyForElderly(result.reasons[0] || "");
+            msg = `⚠️ Something looks a bit wrong with this email.\n${topReason}\n\nPlease ask a family member before clicking anything.`;
+        } else {
+            const topReason = simplifyForElderly(result.reasons[0] || "");
+            msg = `⛔ STOP! This email may be dangerous!\n${topReason}\n\nDo NOT click any links or type your password. Ask a family member for help.`;
+        }
     } else {
-        msg += `This email looks dangerous. I found signs like: ${result.reasons.slice(0,2).join(', ')}. Do not click links or enter passwords. 🚫`;
+        if (result.risk_score < 40) {
+            msg += "This email looks mostly safe. I did not find strong phishing signals, but still check links before clicking. ✅";
+        } else if (result.risk_score < 70) {
+            msg += `This email looks suspicious. I found signs like: ${result.reasons.slice(0,2).join(', ')}. Be careful before clicking links. ⚠️`;
+        } else {
+            msg += `This email looks dangerous. I found signs like: ${result.reasons.slice(0,2).join(', ')}. Do not click links or enter passwords. 🚫`;
+        }
     }
     
     // Don't repeat the exact same message for the same email
@@ -1684,12 +1970,18 @@
     const chat = document.querySelector('.catphis-chat');
     const bubble = document.querySelector('.catphis-bubble');
     if (chat && !chat.classList.contains("open") && bubble) {
-        bubble.textContent = result.risk_score >= 70 ? "⛔ Dangerous email detected!" : "⚠️ Suspicious email detected!";
-        if (result.risk_score < 40) bubble.textContent = "✅ Email scanned: Looks safe.";
+        if (isElderly) {
+            bubble.textContent = result.risk_score >= 70 ? "🛑 DANGER: Dangerous email!" : (result.risk_score >= 40 ? "⚠️ WARNING: Check this email!" : "✅ Email looks safe");
+            bubble.style.fontSize = "15px";
+            bubble.style.fontWeight = "700";
+        } else {
+            bubble.textContent = result.risk_score >= 70 ? "⛔ Dangerous email detected!" : "⚠️ Suspicious email detected!";
+            if (result.risk_score < 40) bubble.textContent = "✅ Email scanned: Looks safe.";
+        }
         bubble.style.borderColor = result.risk_score >= 70 ? "rgba(239,68,68,.6)" : (result.risk_score >= 40 ? "rgba(245,158,11,.5)" : "rgba(16,185,129,.5)");
         bubble.style.display = "block";
-        setTimeout(() => { bubble.style.transition = "opacity .6s"; bubble.style.opacity = "0"; }, 6000);
-        setTimeout(() => { bubble.style.display = "none"; bubble.style.opacity = ""; }, 6700);
+        setTimeout(() => { bubble.style.transition = "opacity .6s"; bubble.style.opacity = "0"; }, isElderly ? 12000 : 6000);
+        setTimeout(() => { bubble.style.display = "none"; bubble.style.opacity = ""; }, isElderly ? 12700 : 6700);
     }
   }
   
@@ -1941,8 +2233,11 @@
 
     try {
       const result = await analyzeWithBackend(payload);
-      if (!result) { saveResult(null, false); return; }
-      saveResult(result, true);
+      const score = result?.risk_score ?? 0;
+      const verdict = result?.verdict ?? (result ? "Safe" : "Backend Offline");
+
+      if (!result) { saveResult(null, false); }
+      else { saveResult(result, true); }
 
       // Re-inject with glow + bubble
       const root = document.getElementById(ROOT_ID);
@@ -1950,8 +2245,8 @@
         root.remove();
         window.__catphisRan = false;
         window.__catphisRan = true;
-        window.__catphisPageRiskResult = result;
-        injectMascot(result.risk_score, result.verdict);
+        window.__catphisPageRiskResult = result || { risk_score: 0, verdict: "Offline" };
+        injectMascot(score, verdict);
       }
       
       // Start Email Watcher if we are on a webmail page
@@ -1964,6 +2259,23 @@
           startChatWatcher();
       }
 
+      // Check for password fields immediately
+      const sensitive = detectSensitiveRequests();
+      if (sensitive.hasPasswordInput) {
+        logFamilySafetyEvent("password_field_on_load", { risk_score: score });
+        if (score >= 40) {
+            setTimeout(() => {
+                const chat = document.querySelector('.catphis-chat');
+                if (chat && !chat.classList.contains("open")) {
+                    chat.classList.add("open");
+                    const warningMsg = score >= 70 
+                        ? "🚨 I found a password field on this dangerous page! Do NOT type your password here."
+                        : "⚠️ Be careful, there's a login form here and I've flagged this page as suspicious.";
+                    window.__catphisAddMsg?.(warningMsg, "bot");
+                }
+            }, 1500);
+        }
+      }
     } catch (err) {
       console.error("[CatPhis] Error:", err);
     }

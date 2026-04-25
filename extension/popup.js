@@ -28,8 +28,86 @@ const sourceTag   = document.getElementById("sourceTag");
 const tsLabel     = document.getElementById("tsLabel");
 const analyzeBtn  = document.getElementById("analyzeBtn");
 const clearBtn    = document.getElementById("clearBtn");
+const elderlyToggle = document.getElementById("elderlyToggle");
+const contactNameEl = document.getElementById("contactName");
+const contactInfoEl = document.getElementById("contactInfo");
+const contactSaveBtn = document.getElementById("contactSaveBtn");
+const contactSavedTip = document.getElementById("contactSavedTip");
+const shareModal   = document.getElementById("shareModal");
+const shareText    = document.getElementById("shareText");
+const shareCopyBtn = document.getElementById("shareCopyBtn");
+const shareMailLink = document.getElementById("shareMailLink");
+const shareWaLink  = document.getElementById("shareWaLink");
+const shareCloseBtn = document.getElementById("shareCloseBtn");
 
 let currentTabUrl = null;
+let elderlyModeEnabled = false;
+let trustedContactName = "";
+let trustedContactInfo = "";
+
+// Elderly-mode plain language translations
+const ELDERLY_REASONS = {
+  "Suspicious domain":          "The website address looks fake or misspelled.",
+  "credential":                 "This page is asking for your password or personal info.",
+  "Urgent":                     "The message is trying to scare or rush you — that's a trick.",
+  "brand":                      "The sender is pretending to be a company they are not.",
+  "mismatch":                   "The link goes somewhere different than it pretends.",
+  "shortened URL":               "The link is hidden — it could lead anywhere.",
+  "login":                      "This is asking you to log in somewhere suspicious.",
+  "obfuscation":                "The link is disguised to look safe but it is not.",
+  "lookalike":                  "The website name is almost correct — but it's a fake copy.",
+  "impersonation":              "Someone is pretending to be a company like PayPal or Google.",
+};
+
+function simplifyReason(r) {
+  const rL = r.toLowerCase();
+  for (const [key, plain] of Object.entries(ELDERLY_REASONS)) {
+    if (rL.includes(key.toLowerCase())) return plain;
+  }
+  return r; // fallback to original if no match
+}
+
+// ── Share / Ask Family helper ─────────────────────────────────────────────
+function buildShareMessage({ type, riskScore, verdict, reason, link }) {
+  const name = trustedContactName || "family member";
+  return `Hi ${name}, can you check this for me? CatPhish says it may be unsafe.
+
+Type: ${type}
+Risk: ${riskScore}/100
+Verdict: ${verdict}
+Reason: ${reason}
+Link/page: ${link}`;
+}
+
+function openShareModal(params) {
+  const msg = buildShareMessage(params);
+  shareText.textContent = msg;
+
+  // Mail link
+  const info = trustedContactInfo.trim();
+  const looksLikeEmail = info.includes("@");
+  const looksLikePhone = /^[+\d\s\-().]{6,}$/.test(info);
+
+  if (looksLikeEmail && info) {
+    const sub = encodeURIComponent("CatPhish: Safety check needed");
+    const body = encodeURIComponent(msg);
+    shareMailLink.href = `mailto:${info}?subject=${sub}&body=${body}`;
+    shareMailLink.classList.remove("hidden");
+  } else {
+    shareMailLink.classList.add("hidden");
+  }
+
+  if (looksLikePhone && info) {
+    const phone = info.replace(/[\s\-().]/g, "");
+    const waText = encodeURIComponent(msg);
+    shareWaLink.href = `https://wa.me/${phone}?text=${waText}`;
+    shareWaLink.classList.remove("hidden");
+  } else {
+    shareWaLink.classList.add("hidden");
+  }
+
+  shareModal.classList.add("open");
+}
 
 // ── Status config ─────────────────────────────────────────────────────────────
 const STATES = {
@@ -135,7 +213,7 @@ function applyState(status, score, verdict, url, reasons, source, ts, offline) {
     reasonsList.innerHTML = "";
     reasons.forEach(r => {
       const li = document.createElement("li");
-      li.textContent = String(r);
+      li.textContent = String(elderlyModeEnabled ? simplifyReason(r) : r);
       reasonsList.appendChild(li);
     });
   } else {
@@ -157,8 +235,51 @@ function applyState(status, score, verdict, url, reasons, source, ts, offline) {
   sourceTag.textContent = sourceMap[source] || "";
   tsLabel.textContent   = ts ? `at ${formatTime(ts)}` : "";
 
+  // Elderly mode: override verdict text with plain language
+  if (elderlyModeEnabled) {
+    if (status === "phishing") {
+      verdictBig.textContent = "⛔ This may be dangerous!";
+      verdictSub.textContent = "Please do not type your password or card number here.";
+    } else if (status === "suspicious") {
+      verdictBig.textContent = "⚠️ Something looks wrong";
+      verdictSub.textContent = "Be careful. Ask a family member before doing anything.";
+    } else if (status === "safe") {
+      verdictBig.textContent = "✅ Looks safe";
+      verdictSub.textContent = "CatPhish did not find any danger here.";
+    }
+  }
+
   // Offline
   offline ? show(offlineBanner) : hide(offlineBanner);
+
+  // Elderly: ensure family button exists in footer
+  let familyBtn = document.getElementById("familyBtn");
+  if (!familyBtn) {
+    familyBtn = document.createElement("button");
+    familyBtn.id = "familyBtn";
+    familyBtn.className = "elderly-family-btn";
+    familyBtn.innerHTML = "👨‍👩‍👧 Ask a family member";
+    document.querySelector(".footer").appendChild(familyBtn);
+    familyBtn.addEventListener("click", () => {
+      if (elderlyModeEnabled) {
+        openShareModal({
+          type: status,
+          riskScore: score,
+          verdict: verdict || s.label,
+          reason: (reasons && reasons[0]) || "None",
+          link: url
+        });
+      } else {
+        const msg = `Can you check this for me? CatPhish says it might be unsafe: ${currentTabUrl || "(unknown page)"}`;
+        navigator.clipboard.writeText(msg).then(() => {
+          familyBtn.innerHTML = "✅ Message copied! Paste it to someone you trust.";
+          setTimeout(() => { familyBtn.innerHTML = "👨‍👩‍👧 Ask a family member"; }, 3000);
+        }).catch(() => {
+          window.prompt("Copy and send this:", msg);
+        });
+      }
+    });
+  }
 }
 
 function renderResult(result) {
@@ -262,6 +383,58 @@ function clearResult() {
 analyzeBtn.addEventListener("click", analyzeCurrentPage);
 clearBtn.addEventListener("click", clearResult);
 
+// ── Elderly mode init ──────────────────────────────────────────────────────────
+function applyElderlyMode(enabled) {
+  elderlyModeEnabled = enabled;
+  document.body.classList.toggle("elderly-mode", enabled);
+  elderlyToggle.checked = enabled;
+}
+
+elderlyToggle.addEventListener("change", () => {
+  const enabled = elderlyToggle.checked;
+  applyElderlyMode(enabled);
+  chrome.storage.local.set({ elderlyModeEnabled: enabled });
+  // Notify content scripts in the active tab
+  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    if (tabs[0]?.id) {
+      chrome.tabs.sendMessage(tabs[0].id, { type: "ELDERLY_MODE_CHANGED", enabled });
+    }
+  });
+  // Re-render with current data so texts update immediately
+  loadStoredResult();
+});
+
+// ── Share modal events ────────────────────────────────────────────────────────
+shareCloseBtn.addEventListener("click", () => shareModal.classList.remove("open"));
+shareCopyBtn.addEventListener("click", () => {
+  navigator.clipboard.writeText(shareText.textContent).then(() => {
+    shareCopyBtn.textContent = "✅ Copied!";
+    setTimeout(() => { shareCopyBtn.innerHTML = "📋 Copy message"; }, 2000);
+  }).catch(() => window.prompt("Copy this:", shareText.textContent));
+});
+shareModal.addEventListener("click", (e) => {
+  if (e.target === shareModal) shareModal.classList.remove("open");
+});
+
+// ── Trusted contact settings ───────────────────────────────────────────────────
+contactSaveBtn.addEventListener("click", () => {
+  trustedContactName = contactNameEl.value.trim();
+  trustedContactInfo = contactInfoEl.value.trim();
+  chrome.storage.local.set({ trustedContactName, trustedContactInfo });
+  contactSavedTip.textContent = "✅ Saved!";
+  setTimeout(() => { contactSavedTip.textContent = ""; }, 2000);
+});
+
+function loadContactSettings(cb) {
+  chrome.storage.local.get(["trustedContactName", "trustedContactInfo"], (data) => {
+    trustedContactName = data.trustedContactName || "";
+    trustedContactInfo = data.trustedContactInfo || "";
+    contactNameEl.value = trustedContactName;
+    contactInfoEl.value = trustedContactInfo;
+    if (cb) cb();
+  });
+}
+
 // ── Init ──────────────────────────────────────────────────────────────────────
 chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
   const tab = tabs?.[0];
@@ -276,5 +449,13 @@ chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
     tabUrlEl.textContent = "No active tab";
     analyzeBtn.disabled  = true;
   }
-  loadStoredResult();
+
+  chrome.storage.local.get(["elderlyModeEnabled", "trustedContactName", "trustedContactInfo"], (data) => {
+    trustedContactName = data.trustedContactName || "";
+    trustedContactInfo = data.trustedContactInfo || "";
+    contactNameEl.value = trustedContactName;
+    contactInfoEl.value = trustedContactInfo;
+    applyElderlyMode(!!data.elderlyModeEnabled);
+    loadStoredResult();
+  });
 });
