@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "PhishFox - AI Anti-Phishing Assistant",
+  "name": "CatPhish - AI Anti-Phishing Assistant",
   "version": "1.0.0",
-  "description": "🦊 PhishFox protects you from phishing sites using AI-powered analysis.",
+  "description": "🦊 CatPhish protects you from phishing sites using AI-powered analysis.",
   "permissions": [
     "activeTab",
     "storage",
@@ -26,7 +26,7 @@
   ],
   "action": {
     "default_popup": "popup.html",
-    "default_title": "PhishFox - AI Anti-Phishing"
+    "default_title": "CatPhish - AI Anti-Phishing"
   },
   "icons": {},
   "web_accessible_resources": [

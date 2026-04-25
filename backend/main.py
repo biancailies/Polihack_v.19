@@ -8,7 +8,7 @@ from database import engine, get_db, Base
 import models
 import schemas
 import auth
-from detector import analyze_url_only, analyze_full
+from detector import analyze_url_only, analyze_full, analyze_email
 
 # Creează tabelele în baza de date
 Base.metadata.create_all(bind=engine)
@@ -111,6 +111,19 @@ def analyze(
         db.commit()
 
     return schemas.FullAnalysisResponse(**result)
+
+
+@app.post("/analyze-email", response_model=schemas.EmailAnalysisResponse, tags=["Detection"])
+def analyze_email_endpoint(
+    request: schemas.AnalyzeEmailRequest, 
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user_optional)
+):
+    """
+    Endpoint for analyzing emails detected by the browser extension.
+    """
+    result = analyze_email(request)
+    return schemas.EmailAnalysisResponse(**result)
 
 
 # ─── Endpoints de Telemetrie / Istoric ────────────────────────────────────────

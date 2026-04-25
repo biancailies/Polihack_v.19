@@ -1,4 +1,4 @@
-# PhishFox Icons
+# CatPhish Icons
 
 Place your icon files here:
 - `icon16.png`   — 16×16 px  (favicon / toolbar)

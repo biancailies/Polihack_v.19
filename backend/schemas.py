@@ -83,6 +83,24 @@ class AnalyzeRequest(BaseModel):
 class AnalyzeURLRequest(BaseModel):
     url: str
 
+class EmailLink(BaseModel):
+    href: str
+    text: str
+
+class AnalyzeEmailRequest(BaseModel):
+    page_url: str
+    sender: str
+    sender_email: str
+    subject: str
+    body_text: str
+    links: List[EmailLink] = []
+
+class EmailAnalysisResponse(BaseModel):
+    risk_score: int
+    verdict: str
+    reasons: List[str]
+    dangerous_links: List[str]
+
 class URLAnalysisResponse(BaseModel):
     risk_score: int
     verdict: str

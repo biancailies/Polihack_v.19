@@ -1,4 +1,4 @@
-// PhishFox — popup.js (demo-ready)
+// CatPhish — popup.js (demo-ready)
 "use strict";
 
 const BACKEND       = "http://127.0.0.1:8000";

@@ -235,3 +235,116 @@ def _raw_url_score(url: str) -> int:
             break
 
     return score
+
+
+def analyze_email(email_data) -> dict:
+    """
+    Runs rule-based analysis on email content and links.
+    Returns a dict with risk_score, verdict, reasons, and dangerous_links.
+    """
+    score = 0
+    reasons = []
+    dangerous_links = []
+
+    urgent_words = ["urgent", "verify now", "account suspended", "locked", "immediate", "expire", "action required", "limited access", "unusual activity", "password expires", "payment failed"]
+    cred_words = ["password", "login", "sign in", "account", "card", "payment", "billing", "bank account"]
+    susp_urls = ["login", "verify", "secure", "account", "update"]
+    short_urls = ["bit.ly", "tinyurl.com", "t.co", "goo.gl", "ow.ly", "rebrand.ly"]
+    brands = ["paypal", "google", "microsoft", "apple", "facebook", "meta", "instagram", "netflix", "amazon", "dhl", "fedex", "bank"]
+
+    subj = email_data.subject.lower()
+    body = email_data.body_text.lower()
+    s_email = email_data.sender_email.lower()
+    s_name = email_data.sender.lower()
+
+    if any(w in subj or w in body for w in urgent_words):
+        score += 25
+        reasons.append("Urgent or threatening language detected")
+    
+    if any(w in body for w in cred_words):
+        score += 15
+        reasons.append("Requests credentials or sensitive information")
+    
+    if any(b in s_name and b not in s_email for b in brands):
+        score += 30
+        reasons.append("Sender name mimics a brand but email address does not match")
+
+    if re.search(r'gift card|crypto|bitcoin|wire transfer|itunes', body):
+        score += 50
+        reasons.append("Request for untraceable payment (gift card/crypto)")
+        
+    if "account is locked" in body or "bank account locked" in body:
+        score += 85
+        reasons.append("Bank account lock scam")
+        
+    if re.search(r'mom|dad|son|daughter|mum', body) and "new number" in body:
+        score += 80
+        reasons.append("Family impersonation")
+        
+    if "send money" in body or "lost my phone" in body or "transfer needed" in body:
+        score += 60
+        reasons.append("Emergency money request")
+        
+    if re.search(r'package|delivery|stuck', body) and re.search(r'fee|pay|customs', body):
+        score += 75
+        reasons.append("Package delivery scam")
+        
+    if "won a prize" in body or "claim now" in body or "lottery" in body:
+        score += 70
+        reasons.append("Prize scam")
+
+    for link in email_data.links:
+        h = link.href.lower()
+        t = link.text.lower()
+        
+        looks_like_url = "." in t and " " not in t
+        if looks_like_url:
+            t_domain = t.replace('http://', '').replace('https://', '').split('/')[0]
+            h_domain = h.replace('http://', '').replace('https://', '').split('/')[0]
+            if t_domain and h_domain and t_domain != h_domain:
+                score += 40
+                reasons.append("Link text destination mismatch (spoofed link)")
+                dangerous_links.append(link.href)
+                
+        link_domain = h.replace('http://', '').replace('https://', '').split('/')[0] if h else ""
+        
+        if h.startswith("http") and "@" in link_domain:
+            score += 75
+            reasons.append("URL obfuscation detected (credentials in link)")
+            dangerous_links.append(link.href)
+            
+        for b in brands:
+            if b in link_domain and link_domain != f"{b}.com":
+                score += 40
+                reasons.append("Link domain mimics a brand")
+                dangerous_links.append(link.href)
+                
+        if any(s in h for s in short_urls):
+            score += 20
+            reasons.append("Contains shortened URLs")
+            dangerous_links.append(link.href)
+        elif any(s in h for s in susp_urls):
+            score += 15
+            reasons.append("Suspicious keywords in links")
+            dangerous_links.append(link.href)
+
+    reasons = list(dict.fromkeys(reasons))
+    dangerous_links = list(dict.fromkeys(dangerous_links))
+    score = min(score, 100)
+
+    verdict = "Safe"
+    if score >= 70:
+        verdict = "Phishing"
+    elif score >= 40:
+        verdict = "Suspicious"
+
+    if not reasons:
+        reasons.append("Email looks mostly safe")
+
+    return {
+        "risk_score": score,
+        "verdict": verdict,
+        "reasons": reasons,
+        "dangerous_links": dangerous_links
+    }
+

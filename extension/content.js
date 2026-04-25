@@ -1,5 +1,5 @@
 // CatPhis — content.js
-// PhishFox analysis + CatPhis animated mascot + chatbot
+// CatPhish analysis + CatPhis animated mascot + chatbot
 
 (function () {
   "use strict";
@@ -1131,7 +1131,6 @@
     const quickBtnsArea = document.createElement("div");
     quickBtnsArea.className = "catphis-quick-btns";
     const quickQuestions = [
-      "Scan this email",
       "Is this safe?",
       "Can I enter my password?",
       "Is payment safe here?",
@@ -1205,11 +1204,7 @@
 
     quickQuestions.forEach(q => {
       addQuickBtn(q, () => {
-        if (q === "Scan this email") {
-          if (window.__catphisForceScanEmail) window.__catphisForceScanEmail();
-        } else {
-          input.value = q; send();
-        }
+        input.value = q; send();
       });
     });
 
@@ -1636,6 +1631,36 @@
 
     // Apply settings immediately after injection
     applyCurrentSettings();
+
+    // Auto-check password safety on load
+    setTimeout(() => {
+      if (document.querySelector('input[type="password"]') || document.querySelector('input[type="parolă"]')) {
+        const score = riskScore || 0;
+        if (!chat.classList.contains("open")) {
+          if (score >= 70) {
+            bubble.textContent = "🚨 High risk! Do NOT type your password here!";
+            bubble.style.borderColor = "rgba(239,68,68,.6)";
+          } else if (score >= 40) {
+            bubble.textContent = "⚠️ Careful! This page is suspicious for passwords.";
+            bubble.style.borderColor = "rgba(245,158,11,.5)";
+          } else {
+            bubble.textContent = "✅ Safe to enter your password here.";
+            bubble.style.borderColor = "rgba(16,185,129,.5)";
+          }
+          bubble.style.display = "block";
+          bubble.style.opacity = "1";
+
+          setTimeout(() => {
+            bubble.style.opacity = "0";
+            setTimeout(() => {
+              if (!chat.classList.contains("open") && bubble.style.opacity === "0") {
+                bubble.style.display = "none";
+              }
+            }, 600);
+          }, score >= 40 ? 8000 : 4000);
+        }
+      }
+    }, 1500);
 
     // Watch for sensitive field focus
     document.addEventListener("focusin", (e) => {

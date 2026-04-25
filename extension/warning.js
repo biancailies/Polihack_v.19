@@ -1,4 +1,4 @@
-// PhishFox — warning.js
+// CatPhish — warning.js
 // Script is at bottom of <body> — DOM is already ready, no DOMContentLoaded needed.
 (function () {
   "use strict";

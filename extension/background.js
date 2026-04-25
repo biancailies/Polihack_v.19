@@ -1,4 +1,4 @@
-// PhishFox — background.js
+// CatPhish — background.js
 // Intercepts navigations and blocks high-risk URLs before the page opens.
 
 const BACKEND      = "http://127.0.0.1:8000";
@@ -45,14 +45,14 @@ async function fetchAnalysis(url) {
     });
 
     if (!response.ok) {
-      console.warn(`[PhishFox] /analyze-url returned HTTP ${response.status}`);
+      console.warn(`[CatPhish] /analyze-url returned HTTP ${response.status}`);
       return null;
     }
 
     return await response.json(); // { risk_score, verdict, reasons }
   } catch (err) {
     // AbortError → timeout; TypeError → backend offline / network error
-    console.warn("[PhishFox] Backend unreachable:", err.message);
+    console.warn("[CatPhish] Backend unreachable:", err.message);
     return null;
   } finally {
     clearTimeout(timer);
@@ -103,7 +103,7 @@ function saveOfflineResult(url) {
       url,
       risk_score:  0,
       verdict:     "Backend Offline",
-      reasons:     ["Could not reach the PhishFox backend at localhost:8000"],
+      reasons:     ["Could not reach the CatPhish backend at localhost:8000"],
       analyzedAt:  Date.now(),
       blocked:     false,
       backendOnline: false,
@@ -156,7 +156,7 @@ chrome.webNavigation.onBeforeNavigate.addListener(async (details) => {
   //    This also prevents an infinite loop when the tab is already on warning.html
   if (isInternalUrl(url)) return;
 
-  console.log(`[PhishFox] Analysing: ${url}`);
+  console.log(`[CatPhish] Analysing: ${url}`);
 
   try {
     // 3 & 4. Call backend
@@ -167,7 +167,7 @@ chrome.webNavigation.onBeforeNavigate.addListener(async (details) => {
       // Allow navigation but record the failure
       saveOfflineResult(url);
       updateBadge(tabId, 0);
-      console.warn("[PhishFox] Backend offline — navigation allowed for:", url);
+      console.warn("[CatPhish] Backend offline — navigation allowed for:", url);
       return;
     }
 
@@ -175,7 +175,7 @@ chrome.webNavigation.onBeforeNavigate.addListener(async (details) => {
 
     // 5 & 6. High-risk → block
     if (risk_score >= BLOCK_SCORE) {
-      console.warn(`[PhishFox] BLOCKED (score=${risk_score}): ${url}`);
+      console.warn(`[CatPhish] BLOCKED (score=${risk_score}): ${url}`);
       saveBlockedResult(url, result);
       updateBadge(tabId, risk_score);
       redirectToWarning(tabId, url);
@@ -183,13 +183,13 @@ chrome.webNavigation.onBeforeNavigate.addListener(async (details) => {
     }
 
     // 7. Safe enough → allow and save result
-    console.log(`[PhishFox] Allowed (score=${risk_score}): ${url}`);
+    console.log(`[CatPhish] Allowed (score=${risk_score}): ${url}`);
     saveAnalysisResult(url, result);
     updateBadge(tabId, risk_score);
 
   } catch (err) {
     // Catch-all so the extension never crashes the service worker
-    console.error("[PhishFox] Unexpected error in onBeforeNavigate:", err);
+    console.error("[CatPhish] Unexpected error in onBeforeNavigate:", err);
   }
 });
 
