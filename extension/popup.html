@@ -359,6 +359,199 @@
 
     /* Results area wrapper */
     #resultsArea { display: flex; flex-direction: column; gap: 8px; }
+
+    /* ── Elderly Protection Mode ── */
+    .elderly-toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 12px;
+      background: rgba(167,139,250,.08);
+      border-top: 1px solid rgba(167,139,250,.15);
+      font-size: 12px;
+      color: #a78bfa;
+      font-weight: 600;
+      gap: 8px;
+    }
+    .elderly-toggle-row span { flex: 1; }
+    .elderly-toggle {
+      position: relative;
+      display: inline-block;
+      width: 38px;
+      height: 22px;
+      flex-shrink: 0;
+    }
+    .elderly-toggle input { opacity: 0; width: 0; height: 0; }
+    .elderly-slider {
+      position: absolute;
+      inset: 0;
+      background: #3d4459;
+      border-radius: 22px;
+      cursor: pointer;
+      transition: background .2s;
+    }
+    .elderly-slider::before {
+      content: "";
+      position: absolute;
+      width: 16px; height: 16px;
+      left: 3px; bottom: 3px;
+      background: #fff;
+      border-radius: 50%;
+      transition: transform .2s;
+    }
+    .elderly-toggle input:checked + .elderly-slider { background: #7c3aed; }
+    .elderly-toggle input:checked + .elderly-slider::before { transform: translateX(16px); }
+
+    /* Elderly mode active overrides */
+    body.elderly-mode {
+      font-size: 16px;
+    }
+    body.elderly-mode .verdict-big { font-size: 22px; }
+    body.elderly-mode .verdict-sub { font-size: 14px; }
+    body.elderly-mode .reasons-list li { font-size: 15px; padding: 8px 12px; }
+    body.elderly-mode .btn { font-size: 15px; padding: 12px 16px; }
+    body.elderly-mode .pill { font-size: 14px; padding: 6px 14px; }
+    body.elderly-mode .arc-num { font-size: 22px; }
+    body.elderly-mode .tab-url { font-size: 12px; }
+    .elderly-family-btn {
+      display: none;
+      width: 100%;
+      margin-top: 6px;
+      padding: 11px;
+      background: linear-gradient(135deg, #6d28d9, #a78bfa);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity .15s;
+    }
+    body.elderly-mode .elderly-family-btn { display: flex; align-items: center; justify-content: center; gap: 8px; }
+    .elderly-family-btn:hover { opacity: .88; }
+
+    /* ── Trusted Contact Settings ── */
+    .contact-section {
+      padding: 10px 12px;
+      background: rgba(124,58,237,.07);
+      border-top: 1px solid rgba(124,58,237,.15);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .contact-section-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .5px;
+      text-transform: uppercase;
+      color: #a78bfa;
+      margin-bottom: 2px;
+    }
+    .contact-inputs { display: flex; flex-direction: column; gap: 5px; }
+    .contact-input {
+      background: rgba(255,255,255,.05);
+      border: 1px solid rgba(124,58,237,.25);
+      border-radius: 7px;
+      color: #edf0f7;
+      font-family: inherit;
+      font-size: 12px;
+      padding: 7px 10px;
+      outline: none;
+      transition: border-color .2s;
+      width: 100%;
+    }
+    .contact-input:focus { border-color: #7c3aed; }
+    .contact-input::placeholder { color: #3d4459; }
+    .contact-save-btn {
+      align-self: flex-end;
+      background: linear-gradient(135deg,#6d28d9,#a78bfa);
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 5px 12px;
+      cursor: pointer;
+      transition: opacity .15s;
+    }
+    .contact-save-btn:hover { opacity: .85; }
+    .contact-saved-tip {
+      font-size: 10px;
+      color: #22c55e;
+      text-align: right;
+      height: 12px;
+      transition: opacity .3s;
+    }
+
+    /* ── Share Modal ── */
+    .share-modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.7);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+    .share-modal-overlay.open { display: flex; }
+    .share-modal {
+      background: #12151e;
+      border: 1px solid rgba(124,58,237,.4);
+      border-radius: 16px;
+      padding: 20px;
+      width: 320px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      box-shadow: 0 20px 60px rgba(0,0,0,.8);
+      animation: modal-in .2s cubic-bezier(.4,0,.2,1);
+    }
+    @keyframes modal-in {
+      from { opacity:0; transform: scale(.94) translateY(8px); }
+      to   { opacity:1; transform: scale(1) translateY(0); }
+    }
+    .share-modal-title {
+      font-size: 14px;
+      font-weight: 800;
+      color: #a78bfa;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .share-msg-box {
+      background: rgba(255,255,255,.04);
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 8px;
+      padding: 10px;
+      font-size: 11px;
+      color: #7c859c;
+      line-height: 1.7;
+      white-space: pre-wrap;
+      word-break: break-all;
+      max-height: 150px;
+      overflow-y: auto;
+    }
+    .share-actions { display: flex; flex-direction: column; gap: 7px; }
+    .share-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+      border: none;
+      transition: opacity .15s;
+      text-decoration: none;
+    }
+    .share-btn:hover { opacity: .85; }
+    .share-btn-copy  { background: linear-gradient(135deg,#6d28d9,#7c3aed); color:#fff; }
+    .share-btn-mail  { background: rgba(34,197,94,.15); color:#22c55e; border:1px solid rgba(34,197,94,.3); }
+    .share-btn-wa    { background: rgba(37,211,102,.15); color:#25d366; border:1px solid rgba(37,211,102,.3); }
+    .share-btn-close { background: rgba(255,255,255,.05); color:#7c859c; border:1px solid rgba(255,255,255,.08); }
   </style>
 </head>
 <body>
@@ -439,6 +632,40 @@
   <button class="btn btn-primary" id="analyzeBtn">🔍 Analyze current page</button>
   <button class="btn btn-ghost" id="clearBtn" title="Clear result">🗑</button>
 </footer>
+
+<!-- Elderly toggle -->
+<div class="elderly-toggle-row">
+  <span>👴 Elderly Protection Mode</span>
+  <label class="elderly-toggle" title="Simpler warnings for older family members">
+    <input type="checkbox" id="elderlyToggle">
+    <span class="elderly-slider"></span>
+  </label>
+</div>
+
+<!-- Trusted Contact Settings -->
+<div class="contact-section">
+  <div class="contact-section-label">👨‍👩‍👧 Trusted Family Contact</div>
+  <div class="contact-inputs">
+    <input class="contact-input" id="contactName" placeholder="Name (e.g. John)" maxlength="40" autocomplete="off">
+    <input class="contact-input" id="contactInfo" placeholder="Email or phone number" maxlength="80" autocomplete="off">
+  </div>
+  <button class="contact-save-btn" id="contactSaveBtn">✔ Save</button>
+  <div class="contact-saved-tip" id="contactSavedTip"></div>
+</div>
+
+<!-- Share / Ask Family Modal -->
+<div class="share-modal-overlay" id="shareModal">
+  <div class="share-modal">
+    <div class="share-modal-title">👨‍👩‍👧 Ask a family member</div>
+    <div class="share-msg-box" id="shareText"></div>
+    <div class="share-actions">
+      <button class="share-btn share-btn-copy" id="shareCopyBtn">📋 Copy message</button>
+      <a class="share-btn share-btn-mail hidden" id="shareMailLink" href="#" target="_blank">✉️ Send via Email</a>
+      <a class="share-btn share-btn-wa hidden" id="shareWaLink" href="#" target="_blank">💬 Send via WhatsApp</a>
+      <button class="share-btn share-btn-close" id="shareCloseBtn">❌ Close</button>
+    </div>
+  </div>
+</div>
 
 <script src="popup.js"></script>
 </body>

@@ -109,6 +109,13 @@ class MessageAnalysisResponse(BaseModel):
 
 
 
+class FamilyAlertRequest(BaseModel):
+    recipient: str
+    message: str
+    url: str
+    risk_score: int
+    verdict: str
+
 # ── Helper: extract ML features ───────────────────────────────────────────────
 def extract_features(url: str) -> pd.DataFrame:
     url_lower = url.lower()
@@ -517,6 +524,21 @@ def analyze_message(request: MessageRequest):
     # Local fallback
     return analyze_scam_message_local(request.message_text)
 
+
+# ── POST /send-family-alert ──────────────────────────────────────────────────
+@app.post("/send-family-alert")
+def send_family_alert(request: FamilyAlertRequest):
+    """
+    Simulates sending an email alert to a family member.
+    In a real app, this would use an SMTP server or an email API like SendGrid.
+    """
+    print(f"\n[FAMILY ALERT SENT]")
+    print(f"To: {request.recipient}")
+    print(f"Message:\n{request.message}")
+    print(f"Context: {request.url} (Risk: {request.risk_score}, Verdict: {request.verdict})")
+    print("---------------------\n")
+    
+    return {"status": "success", "message": f"Alert sent to {request.recipient}"}
 
 # ── GET / (health check) ──────────────────────────────────────────────────────
 @app.get("/")

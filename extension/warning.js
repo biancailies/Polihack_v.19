@@ -16,6 +16,36 @@
   const goBackBtn   = document.getElementById("goBackBtn");
   const copyBtn     = document.getElementById("copyBtn");
   const proceedBtn  = document.getElementById("proceedBtn");
+  const familyBtn   = document.getElementById("familyBtn");
+
+  // ── Elderly mode ────────────────────────────────────────────────────────────
+  const ELDERLY_REASONS_MAP = [
+    [/credential|password|login|sign.?in/i, "This page is asking for your password. Do NOT type it."],
+    [/urgent|immediate|expire|suspend|locked/i, "The page is trying to scare you — this is a scammer trick."],
+    [/brand|impersonat|mimic/i, "Someone is pretending to be a company like PayPal or Google."],
+    [/mismatch|spoofed/i, "A link on this page goes somewhere different than it shows."],
+    [/domain/i, "The website address looks fake or misspelled."],
+  ];
+
+  function simplifyReasonForElderly(r) {
+    for (const [pat, plain] of ELDERLY_REASONS_MAP) {
+      if (pat.test(r)) return plain;
+    }
+    return r;
+  }
+
+  function applyElderlyMode(reasons) {
+    document.body.classList.add("elderly-mode");
+    // Override subtitle
+    const subtitle = document.querySelector(".subtitle");
+    if (subtitle) subtitle.textContent = "This website was blocked because it may be trying to steal your password or personal details.";
+    // Simplify reason text
+    if (reasons) {
+      reasonsList.querySelectorAll("li").forEach(li => {
+        li.textContent = simplifyReasonForElderly(li.textContent);
+      });
+    }
+  }
 
   // ── Render ──────────────────────────────────────────────────────────────────
   function renderUrl(url) {
@@ -54,7 +84,7 @@
   renderUrl(blockedUrl); // show URL immediately, before async storage read
 
   if (typeof chrome !== "undefined" && chrome.storage) {
-    chrome.storage.local.get(["blockedAnalysis", "lastUrlAnalysis"], (data) => {
+    chrome.storage.local.get(["blockedAnalysis", "lastUrlAnalysis", "elderlyModeEnabled"], (data) => {
       if (chrome.runtime.lastError) { render(blockedUrl, null); return; }
 
       const blocked = data.blockedAnalysis || null;
@@ -66,6 +96,10 @@
 
       const url = analysis?.url || blockedUrl;
       render(url, analysis);
+
+      if (data.elderlyModeEnabled) {
+        applyElderlyMode(analysis?.reasons);
+      }
     });
   } else {
     render(blockedUrl, null);
@@ -108,4 +142,17 @@
       window.prompt("Copy this URL:", target);
     }
   });
+
+  if (familyBtn) {
+    familyBtn.addEventListener("click", () => {
+      const target = blockedUrl || urlTxt.title || "(unknown page)";
+      const msg = `Can you check this for me? CatPhish says it might be unsafe: ${target}`;
+      navigator.clipboard.writeText(msg).then(() => {
+        familyBtn.textContent = "✅ Message copied! Paste it to someone you trust.";
+        setTimeout(() => { familyBtn.innerHTML = "👨‍👩‍👧 Ask a family member"; }, 3000);
+      }).catch(() => {
+        window.prompt("Copy and send this:", msg);
+      });
+    });
+  }
 })();
