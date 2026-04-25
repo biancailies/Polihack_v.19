@@ -79,6 +79,23 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     reply: str
 
+class EmailLink(BaseModel):
+    text: str
+    href: str
+
+class EmailRequest(BaseModel):
+    page_url: str
+    sender: str
+    sender_email: str
+    subject: str
+    body_text: str
+    links: list[EmailLink] = []
+
+class EmailAnalysisResponse(BaseModel):
+    risk_score: int
+    verdict: str
+    reasons: list[str]
+    dangerous_links: list[str]
 class MessageRequest(BaseModel):
     message_text: str
     page_url: str = ""
@@ -176,6 +193,139 @@ def analyze(request: URLRequest):
         verdict=verdict,
         reasons=reasons,
     )
+
+# ── POST /analyze-email ───────────────────────────────────────────────────────
+import urllib.parse
+
+@app.post("/analyze-email", response_model=EmailAnalysisResponse)
+def analyze_email(request: EmailRequest):
+    score = 0.0
+    reasons = []
+    dangerous_links = []
+    
+    urgent_words = [
+        "urgent", "verify now", "account suspended", "locked", "immediate", 
+        "expire", "action required", "limited access", "unusual activity", 
+        "password expires", "payment failed"
+    ]
+    credential_words = ["password", "login", "sign in", "account", "card", "payment", "billing", "bank account"]
+    suspicious_url_words = ["login", "verify", "secure", "account", "update"]
+    shortened_urls = ["bit.ly", "tinyurl.com", "t.co", "goo.gl", "ow.ly", "rebrand.ly"]
+    brands = ["paypal", "google", "microsoft", "apple", "facebook", "meta", "instagram", "netflix", "amazon", "dhl", "fedex", "bank"]
+    
+    # Lookalike substitutions mapping (e.g. 0 -> o, 1 -> l, etc. for simple checks)
+    
+    subject_lower = request.subject.lower()
+    body_lower = request.body_text.lower()
+    sender_email_lower = request.sender_email.lower()
+    sender_lower = request.sender.lower()
+    
+    if any(w in subject_lower for w in urgent_words) or any(w in body_lower for w in urgent_words):
+        score += 0.25
+        reasons.append("Urgent or threatening language detected")
+        
+    if any(w in body_lower for w in credential_words):
+        score += 0.15
+        reasons.append("Requests credentials or sensitive information")
+        
+    if any(b in sender_lower and b not in sender_email_lower for b in brands):
+        score += 0.30
+        reasons.append(f"Sender name mimics a brand but email address does not match")
+        
+    def get_domain(url_str):
+        try:
+            return urllib.parse.urlparse(url_str).netloc.lower()
+        except:
+            return ""
+
+    for link in request.links:
+        link_href_lower = link.href.lower()
+        link_text_lower = link.text.lower()
+        link_domain = get_domain(link_href_lower)
+        
+        # Shortened URLs
+        if any(short in link_domain for short in shortened_urls):
+            score += 0.20
+            if "Contains shortened URLs" not in reasons:
+                reasons.append("Contains shortened URLs")
+            dangerous_links.append(link.href)
+            continue
+            
+        # Suspicious words in URLs
+        if any(w in link_href_lower for w in suspicious_url_words):
+            score += 0.15
+            if "Suspicious keywords in links" not in reasons:
+                reasons.append("Suspicious keywords in links")
+            dangerous_links.append(link.href)
+            
+        # URL Obfuscation (Basic Auth)
+        if "@" in link_domain:
+            score += 0.75
+            if "URL obfuscation detected (credentials in link)" not in reasons:
+                reasons.append("URL obfuscation detected (credentials in link)")
+            if link.href not in dangerous_links:
+                dangerous_links.append(link.href)
+                
+        # Mismatch detection: Text looks like a domain, but href is different
+        # Basic check: if text contains a known brand and .com/.net etc., but domain doesn't match
+        looks_like_url = "." in link_text_lower and not (" " in link_text_lower.strip())
+        if looks_like_url:
+            text_domain = get_domain(link_text_lower if link_text_lower.startswith("http") else f"http://{link_text_lower}")
+            if text_domain and link_domain and text_domain != link_domain:
+                score += 0.40
+                if "Link text destination mismatch (spoofed link)" not in reasons:
+                    reasons.append("Link text destination mismatch (spoofed link)")
+                if link.href not in dangerous_links:
+                    dangerous_links.append(link.href)
+
+        # Lookalike domains and brand + keyword domains
+        for b in brands:
+            if b in link_domain and link_domain != f"{b}.com":
+                # Check if it's a lookalike or brand+keyword (e.g. paypal-login.com)
+                if any(w in link_domain for w in suspicious_url_words) or link_domain.startswith(f"{b}-") or link_domain.endswith(f"-{b}") or "@" in link_domain:
+                    score += 0.40
+                    if "Link domain mimics a brand" not in reasons:
+                        reasons.append("Link domain mimics a brand")
+                    if link.href not in dangerous_links:
+                        dangerous_links.append(link.href)
+                        
+        # Basic character substitutions check (paypaI, faceb00k, g00gle, micros0ft)
+        if "paypai" in link_domain or "faceb00k" in link_domain or "g00gle" in link_domain or "micros0ft" in link_domain:
+             score += 0.40
+             if "Link uses a lookalike domain (typosquatting)" not in reasons:
+                 reasons.append("Link uses a lookalike domain (typosquatting)")
+             if link.href not in dangerous_links:
+                 dangerous_links.append(link.href)
+
+        # Domain mismatch basic check (if domain in link doesn't match sender_email domain)
+        if sender_email_lower and "@" in sender_email_lower:
+            sender_domain = sender_email_lower.split("@")[-1]
+            if link_domain and sender_domain not in link_domain:
+                if any(b in sender_lower or b in subject_lower for b in brands):
+                    score += 0.20
+                    if "Link destination does not match sender domain" not in reasons:
+                        reasons.append("Link destination does not match sender domain")
+                    if link.href not in dangerous_links:
+                        dangerous_links.append(link.href)
+
+    final_score = max(0, min(100, int(score * 100)))
+    
+    if final_score >= 70:
+        verdict = "Phishing"
+    elif final_score >= 40:
+        verdict = "Suspicious"
+    else:
+        verdict = "Safe"
+        if not reasons:
+            reasons.append("Email looks mostly safe")
+            
+    return EmailAnalysisResponse(
+        risk_score=final_score,
+        verdict=verdict,
+        reasons=reasons,
+        dangerous_links=dangerous_links
+    )
+
 
 # ── POST /analyze-url ─────────────────────────────────────────────────────────
 # This endpoint is required by the extension's background.js and popup.js
