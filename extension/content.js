@@ -1293,34 +1293,72 @@
     }
 
     async function checkShoppingSite() {
-        shopBtn.disabled = true;
-        shopBtn.textContent = "Scanning shop...";
+        const btn = document.querySelector('[data-catphis-id="shop-btn"]') || shopBtn;
+        if (btn) { btn.disabled = true; btn.textContent = "Scanning shop..."; }
 
         try {
             const shopData = extractShoppingData();
+            console.log("[CatPhish] Sending shop data to background...", shopData.hostname);
             
             const response = await new Promise((resolve) => {
                 chrome.runtime.sendMessage({ action: "fetch-shopping", payload: shopData }, (res) => {
-                    if (chrome.runtime.lastError) resolve({ error: true, text: chrome.runtime.lastError.message, status: 0 });
-                    else resolve(res);
+                    if (chrome.runtime.lastError) {
+                        console.warn("[CatPhish] Shop sendMessage error:", chrome.runtime.lastError.message);
+                        resolve({ error: true, text: chrome.runtime.lastError.message, status: 0 });
+                    } else {
+                        resolve(res || { error: true, text: "No response from background", status: 0 });
+                    }
                 });
             });
             
+            console.log("[CatPhish] Shop response:", response);
+            
             if (response.error) {
+                // Try local fallback if backend is unreachable
+                const localResult = localShoppingFallback(shopData);
+                handleShoppingResult(localResult);
                 if (response.status === 0) {
-                    showToast("⚠️ Network Error (Backend offline or blocked)", "rgba(245,158,11,.9)");
-                } else {
-                    showToast(`⚠️ Server Error ${response.status}: ` + (response.text || "").substring(0, 100), "rgba(239,68,68,.9)");
+                    showToast("⚠️ Backend offline — using local analysis", "rgba(245,158,11,.9)");
                 }
             } else if (response.data) {
                 handleShoppingResult(response.data);
             }
         } catch (err) {
+            console.error("[CatPhish] checkShoppingSite exception:", err);
             showToast("⚠️ JS Error: " + err.message, "rgba(245,158,11,.9)");
         }
 
-        shopBtn.disabled = false;
-        shopBtn.textContent = "🛒 Check this shop";
+        if (btn) { btn.disabled = false; btn.textContent = "🛒 Check this shop"; }
+    }
+
+    function localShoppingFallback(shopData) {
+        let score = 0;
+        const reasons = [];
+        const txt = shopData.body_text.toLowerCase();
+        const host = shopData.hostname.toLowerCase();
+
+        const discountPhrases = ["80% off","90% off","70% off","clearance","today only","limited stock","liquidation"];
+        if (discountPhrases.some(p => txt.includes(p))) { score += 35; reasons.push("Extreme discount language detected"); }
+
+        const suspPayments = ["crypto","bitcoin","gift card","wire transfer","western union"];
+        const found = [...shopData.detected_payment_words, ...suspPayments.filter(w => txt.includes(w))];
+        if (found.length > 0) { score += 45; reasons.push("Suspicious payment methods: " + [...new Set(found)].join(", ")); }
+
+        if (!txt.includes("contact") && !txt.includes("return") && !txt.includes("refund")) { score += 25; reasons.push("Missing trust signals (contact/return policy)"); }
+
+        const weirdTlds = [".top",".vip",".club",".shop",".xyz",".online",".site",".cyou"];
+        if (weirdTlds.some(t => host.endsWith(t))) { score += 20; reasons.push("Suspicious domain extension"); }
+        if ((host.match(/-/g) || []).length >= 2) { score += 15; reasons.push("Domain contains multiple hyphens"); }
+
+        score = Math.min(100, score);
+        const verdict = score >= 85 ? "Likely Scam" : score >= 50 ? "Suspicious" : "Safe";
+        const advice = score >= 85
+            ? "This store shows multiple high-risk scam indicators. DO NOT enter your card details."
+            : score >= 50
+            ? "Proceed with extreme caution. Use PayPal or a credit card only."
+            : "No obvious scam signals found. Always use a secure payment method.";
+
+        return { risk_score: score, verdict, reasons: reasons.length ? reasons : ["Shop looks standard"], advice };
     }
 
     function handleShoppingResult(result) {
