@@ -952,6 +952,110 @@
     };
     quickBtnsArea.appendChild(reportBtn);
 
+    // Scam Message Detector
+    const scamBtn = document.createElement("button");
+    scamBtn.className = "catphis-quick-btn";
+    scamBtn.textContent = "🕵️ Check scam message";
+    scamBtn.style.borderColor = "rgba(16,185,129,.3)";
+    scamBtn.style.color = "#6ee7b7";
+    scamBtn.onclick = async () => {
+      scamBtn.disabled = true;
+      scamBtn.textContent = "Checking...";
+
+      let msgText = window.getSelection().toString().trim();
+      let source = "selected_text";
+
+      if (!msgText) {
+        msgText = extractPageText();
+        source = "visible_page";
+      }
+
+      if (!msgText || msgText.length < 10) {
+        msgText = prompt("Please paste the message you want to check for scams:");
+        source = "manual_paste";
+      }
+
+      if (!msgText) {
+        showToast("No message provided.", "rgba(245,158,11,.9)");
+        scamBtn.disabled = false;
+        scamBtn.textContent = "🕵️ Check scam message";
+        return;
+      }
+
+      try {
+        const analyzeRes = await fetch(`${BACKEND}/analyze-message`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                message_text: msgText,
+                page_url: PAGE_URL,
+                source: source
+            })
+        });
+        
+        let result = null;
+        if (analyzeRes.ok) {
+            result = await analyzeRes.json();
+        } else {
+            throw new Error("Backend offline");
+        }
+        
+        handleScamResult(result);
+      } catch (err) {
+        // Fallback analysis
+        const result = fallbackScamAnalysis(msgText);
+        handleScamResult(result);
+      }
+
+      scamBtn.disabled = false;
+      scamBtn.textContent = "🕵️ Check scam message";
+    };
+    quickBtnsArea.appendChild(scamBtn);
+
+    function fallbackScamAnalysis(text) {
+        const t = text.toLowerCase();
+        let score = 0;
+        let reasons = [];
+        
+        if (t.match(/mom|dad|son|daughter|mum/) && t.includes("new number")) { score += 80; reasons.push("Family impersonation"); }
+        if (t.includes("send money") || t.includes("lost my phone") || t.includes("broken phone") || t.includes("transfer needed")) { score += 60; reasons.push("Emergency money request"); }
+        if (t.match(/package|delivery|stuck/) && t.match(/fee|pay|customs/)) { score += 75; reasons.push("Package delivery scam"); }
+        if (t.includes("won a prize") || t.includes("claim now") || t.includes("reward") || t.includes("lottery")) { score += 70; reasons.push("Prize scam"); }
+        if (t.includes("account is locked") || t.includes("bank account locked")) { score += 85; reasons.push("Bank account lock scam"); }
+        if (t.match(/gift card|crypto|bitcoin|wire transfer/)) { score += 50; reasons.push("Request for untraceable payment"); }
+        if (t.match(/urgent|immediately|asap|act now/)) { score += 20; reasons.push("Urgent pressure language"); }
+        
+        score = Math.min(100, score);
+        let verdict = "Safe";
+        let advice = "This message doesn't trigger our basic scam filters, but always stay alert.";
+        if (score >= 70) { verdict = "Scam"; advice = "This looks like a known scam. Do not reply or send money."; }
+        else if (score >= 40) { verdict = "Suspicious"; advice = "This message contains suspicious language. Verify the sender's identity."; }
+        
+        return { risk_score: score, verdict: verdict, reasons: reasons, advice: advice };
+    }
+
+    function handleScamResult(result) {
+        chrome.storage.local.set({ lastMessageAnalysis: result });
+        
+        // Update glow
+        glow.className = "catphis-glow";
+        if (result.risk_score >= 70) glow.classList.add("danger");
+        else if (result.risk_score >= 40) glow.classList.add("warn");
+        else glow.classList.add("safe");
+
+        // Send a chat message
+        const chatMsg = `I checked the message. Verdict: **${result.verdict}** (Score: ${result.risk_score}/100).\n\nAdvice: ${result.advice}`;
+        
+        if (!chat.classList.contains("open")) {
+            chat.classList.add("open");
+            bubble.style.display = "none";
+        }
+        
+        addMsg(chatMsg, "bot");
+        conversationHistory.push({ role: "assistant", content: chatMsg });
+        saveHistory();
+    }
+
     sendBtn.onclick = send;
     input.onkeydown = (e) => { if (e.key === "Enter") send(); };
 

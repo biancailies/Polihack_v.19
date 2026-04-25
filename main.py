@@ -79,6 +79,17 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     reply: str
 
+class MessageRequest(BaseModel):
+    message_text: str
+    page_url: str = ""
+    source: str = ""
+
+class MessageAnalysisResponse(BaseModel):
+    risk_score: int
+    verdict: str
+    reasons: list[str]
+    advice: str
+
 
 
 # ── Helper: extract ML features ───────────────────────────────────────────────
@@ -260,6 +271,102 @@ def chat(request: ChatRequest):
     # Rule-based fallback
     reply = fallback_chat_response(request)
     return ChatResponse(reply=reply)
+
+
+# ── Scam Message Detector ─────────────────────────────────────────────────────
+
+def analyze_scam_message_local(text: str) -> MessageAnalysisResponse:
+    text_lower = text.lower()
+    score = 0
+    reasons = []
+
+    # Detect family impersonation
+    if any(word in text_lower for word in ["mom", "dad", "son", "daughter", "mum"]) and "new number" in text_lower:
+        score += 80
+        reasons.append("Family impersonation (Hi mom/dad, new number)")
+
+    # Emergency money
+    if any(phrase in text_lower for phrase in ["send money", "lost my phone", "broken phone", "transfer needed"]):
+        score += 60
+        reasons.append("Emergency money request")
+
+    # Package delivery scam
+    if any(word in text_lower for word in ["package", "delivery", "stuck"]) and any(word in text_lower for word in ["fee", "pay", "customs"]):
+        score += 75
+        reasons.append("Package delivery scam")
+
+    # Prize/reward
+    if any(word in text_lower for word in ["won a prize", "claim now", "reward", "lottery"]):
+        score += 70
+        reasons.append("Prize or reward scam")
+
+    # Bank account
+    if "account is locked" in text_lower or "bank account locked" in text_lower:
+        score += 85
+        reasons.append("Bank account lock scam")
+
+    # Gift card / crypto
+    if any(word in text_lower for word in ["gift card", "crypto", "bitcoin", "wire transfer"]):
+        score += 50
+        reasons.append("Request for untraceable payment (gift card/crypto)")
+
+    # Urgent language
+    if any(word in text_lower for word in ["urgent", "immediately", "asap", "act now"]):
+        score += 20
+        reasons.append("Urgent pressure language")
+
+    score = min(100, score)
+
+    if score >= 70:
+        verdict = "Scam"
+        advice = "This looks like a known scam. Do not reply or send money. Contact the person on their known original number."
+    elif score >= 40:
+        verdict = "Suspicious"
+        advice = "This message contains suspicious language. Verify the sender's identity through another channel before acting."
+    else:
+        verdict = "Safe"
+        advice = "This message doesn't trigger our basic scam filters, but always stay alert."
+
+    return MessageAnalysisResponse(
+        risk_score=score,
+        verdict=verdict,
+        reasons=reasons,
+        advice=advice
+    )
+
+@app.post("/analyze-message", response_model=MessageAnalysisResponse)
+def analyze_message(request: MessageRequest):
+    api_key = os.environ.get("OPENAI_API_KEY")
+    
+    if api_key and openai:
+        try:
+            client = openai.OpenAI(api_key=api_key)
+            prompt = (
+                "Analyze the following message for scams. Look for family impersonation (e.g., 'Hi mom, new number'), "
+                "emergency money requests, package delivery scams, prize scams, bank account locks, or requests for gift cards/crypto.\n"
+                "Also check for urgent pressure language.\n\n"
+                f"Message: {request.message_text}\n"
+                f"Source context: {request.source}\n"
+                f"Page URL: {request.page_url}\n\n"
+                "Return exactly a JSON object with this schema: {\"risk_score\": int (0-100), \"verdict\": \"Safe\" | \"Suspicious\" | \"Scam\", \"reasons\": [string], \"advice\": string}"
+            )
+            response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[{"role": "system", "content": "You are a cybersecurity assistant. Only return valid JSON."},
+                          {"role": "user", "content": prompt}],
+                max_tokens=250,
+                temperature=0.0,
+                response_format={ "type": "json_object" }
+            )
+            data = json.loads(response.choices[0].message.content)
+            return MessageAnalysisResponse(**data)
+        except Exception as e:
+            print(f"OpenAI API error for message analysis: {e}")
+            pass
+
+    # Local fallback
+    return analyze_scam_message_local(request.message_text)
+
 
 # ── GET / (health check) ──────────────────────────────────────────────────────
 @app.get("/")
